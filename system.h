@@ -9,4 +9,10 @@
 // Khởi động hệ thống
 void sys_init();
 
+// Lấy dữ liệu về tốc độ hiện tại (m/s)
+float sys_get_spd();
+
+// Lấy dữ liệu về góc quay hiện tại (radians)
+float sys_get_heading();
+
 #endif

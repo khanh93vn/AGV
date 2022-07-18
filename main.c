@@ -9,11 +9,20 @@ void main()
   MCUSR = 0;
   wdt_disable();
 
-  // Cài đặt ban đầu
+  // I) Cài đặt ban đầu
+
+  // Khởi tạo thông số cài đặt
   settings_init();
+
+  // Khởi động các bộ điều khiển
+  //drive_init();
+  //steer_init();
+
+  // Khởi động các hệ thống ngắt
   sys_init();
 
-  // Vòng lặp chính
+
+  // II) Vòng lặp chính
   while (1)
   {
   }

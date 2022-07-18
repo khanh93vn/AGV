@@ -28,7 +28,7 @@ float pid_step(pid_t *pid, float i)
   e = pid->ref - i;
 
   // Tính thay đổi của e so với chu kỳ trước
-  de = e - pid->pe
+  de = e - pid->pe;
 
   // Tính tích phân
   pid->se += (e + pid->pe)/2*dt;

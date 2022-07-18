@@ -17,6 +17,9 @@ int16_t encoder_pos_dot;
 // Biến lưu vị trí encoder. Đơn vị: số xung encoder
 int64_t encoder_position;
 
+// Góc xoay đầu xe
+float vehicle_heading;
+
 // Các chương trình con --------------------------------------------------------
 /**
  * Khởi động hệ thống, thiết lập chương trình
@@ -72,8 +75,23 @@ void sys_init()
   TCCR2B |= CLK_SEL;
 }
 
+/**
+ * Lấy dữ liệu về tốc độ hiện tại.
+ * Đơn vị ngõ ra: m/s.
+ */
+float sys_get_spd()
+{
+  return PI*settings.wheel_diameter*encoder_pos_dot/settings.encoder_ppr/dt;
+}
 
-
+/**
+ * Lấy dữ liệu về góc xoay hiện tại.
+ * Đơn vị ngõ ra: radians.
+ */
+float sys_get_heading()
+{
+  return vehicle_heading;
+}
 // Các chương trình ngắt ------------------------------------------------------
 /**
  * Chương trình ngắt cập nhật vị trí encoder.
@@ -113,13 +131,16 @@ ISR(TIMER2_COMPA_vect)
   // Cập nhật vị trí tuyệt đối encoder
   encoder_position += encoder_pos_dot;
 
-  // II) chạy các bộ điều khiển PID
+  // II) Chạy bộ điều khiển PID bánh dẫn động
+  drive_step();
 
-  // Chạy bộ điều khiển PID bánh dẫn động
+  // III) Cập nhật góc đầu xe từ cảm biến quán tính
 
-  // Chạy bộ điều khiển PID góc lái
 
-  // III) Gửi dữ liệu trạng thái qua UART, dữ liệu bao gồm
+  // IV) Chạy bộ điều khiển PID góc lái
+  steer_step();
+
+  // V) Gửi dữ liệu trạng thái qua UART, dữ liệu bao gồm
   // các thông số thay đổi vị trí và góc lái so với chu kỳ trước
 
 }
