@@ -1,4 +1,4 @@
-// File: steer.c
+// File: steer.cpp
 // Điều khiển góc lái.
 
 #include "agv.h"

@@ -1,4 +1,4 @@
-// File: drive.c
+// File: drive.cpp
 // Điều khiển bánh dẫn động.
 
 #include "agv.h"

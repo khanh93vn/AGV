@@ -1,4 +1,4 @@
-// File: pid.c
+// File: pid.cpp
 // Bộ điều khiển vi tích phân tỷ lệ.
 
 #include "agv.h"

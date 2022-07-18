@@ -1,4 +1,4 @@
-// File: main.c
+// File: main.cpp
 // Chứa chương trình chính.
 
 #include "agv.h"
@@ -14,20 +14,19 @@ int main()
   // Khởi tạo thông số cài đặt
   settings_init();
 
-  // Khởi động các bộ điều khiển
-  drive_init();
-  steer_init();
-
-  // Khởi động các hệ thống ngắt
-  sys_init();
-
   // Khởi động truyền thông
   protocol_init();
 
   // II) Vòng lặp chính
   while (1)
   {
+    // Khởi động các bộ điều khiển
+    drive_init();
+    steer_init();
+
+    // Khởi động các hệ thống ngắt
+    sys_init();
   }
-  
+
   return 0;
 }

@@ -1,4 +1,4 @@
-// File: settings.c
+// File: settings.cpp
 // Quản lý lưu trữ cài đặt hệ thống.
 
 #include "agv.h"

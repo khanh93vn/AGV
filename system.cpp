@@ -1,4 +1,4 @@
-// File: system.c
+// File: system.cpp
 // Quản lý hệ thống:
 // - Định thời cho việc lấy mẫu và điều khiển.
 // - Ngắt đọc encoder.
@@ -127,6 +127,13 @@ ISR(TIMER2_COMPA_vect)
 
   // cho phép ngắt chồng (để cập nhật encoder)
   sei();
+
+  // cập nhật các điểm tham chiếu từ module protocol
+  if (protocol_flags & PROTOCOL_FLAG_UPDATE_REF) {
+    drive_pid.ref = protocol_drive_ref_buff;
+    steer_pid.ref = protocol_steer_ref_buff;
+    protocol_flags &= ~PROTOCOL_FLAG_UPDATE_REF;
+  }
 
   // Cập nhật vị trí tuyệt đối encoder
   encoder_position += encoder_pos_dot;
