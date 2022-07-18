@@ -20,9 +20,9 @@
 #define BUFFERING_LONG            0xFFFFFFFF
 
 // Các biến toàn cục ----------------------------------------------------------
-uint8_t protocol_flags;
-float protocol_drive_ref_buff;
-float protocol_steer_ref_buff;
+volatile uint8_t protocol_flags;
+volatile float protocol_drive_ref_buff;
+volatile float protocol_steer_ref_buff;
 
 // Các chương trình con --------------------------------------------------------
 /**
