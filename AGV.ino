@@ -9,11 +9,3 @@
  */
 
 #include "agv.h"
-
-/*
-void setup()
-{
-  // Thiết lập giao tiếp UART
-  Serial.begin(115200);
-}
-*/

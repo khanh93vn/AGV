@@ -4,6 +4,7 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
-
+// Khởi động truyền thông
+void protocol_init();
 
 #endif

@@ -9,6 +9,7 @@
 #include <stdlib.h>     // Hàm memset và strcpy
 #include <avr/wdt.h>
 #include <Arduino.h>
+#include <HardwareSerial.h>
 
 // nhập các module
 #include "cpu_map.h"

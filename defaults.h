@@ -39,8 +39,10 @@
 // Các hằng số
 #define PI              3.141592653589793238
 
+// Tần số truyền thông UART
+#define BAUDRATE        115200
+
 // Tần số clock hệ thống
-// KHÔNG ĐƯỢC THAY ĐỔI GIÁ TRỊ NÀY
 #define F_CK            16000000L
 
 // Tần số đếm sau khi qua bộ chia

@@ -3,7 +3,7 @@
 
 #include "agv.h"
 
-void main()
+int main()
 {
   // Tắt watchdog
   MCUSR = 0;
@@ -15,15 +15,19 @@ void main()
   settings_init();
 
   // Khởi động các bộ điều khiển
-  //drive_init();
-  //steer_init();
+  drive_init();
+  steer_init();
 
   // Khởi động các hệ thống ngắt
   sys_init();
 
+  // Khởi động truyền thông
+  protocol_init();
 
   // II) Vòng lặp chính
   while (1)
   {
   }
+  
+  return 0;
 }
