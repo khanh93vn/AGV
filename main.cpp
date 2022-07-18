@@ -26,6 +26,12 @@ int main()
 
     // Khởi động các hệ thống ngắt
     sys_init();
+
+    // reset truyền thông
+    protocol_reset();
+
+    // Chạy vòng lặp truyền thông
+    protocol_loop();
   }
 
   return 0;

@@ -5,7 +5,7 @@
 #define AGV_H
 
 // nhập thư viện chuẩn
-#include <stdint.h>     // Cần để khai báo các kiểu số nguyên
+#include <stdint.h>     // Cần để khai báo các biến số nguyên
 #include <stdlib.h>     // Hàm memset và strcpy
 #include <avr/wdt.h>
 #include <Arduino.h>

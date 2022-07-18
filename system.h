@@ -9,6 +9,9 @@
 // Khởi động hệ thống
 void sys_init();
 
+// Dừng hệ thống (do lỗi)
+void sys_halt();
+
 // Lấy dữ liệu về tốc độ hiện tại (m/s)
 float sys_get_spd();
 

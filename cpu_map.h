@@ -12,6 +12,7 @@
 #define IO_STEER_H2 10  // Chân cấp cầu H động cơ lái
 #define IO_ENC0_A   7   // Encoder đọc bánh dẫn động
 #define IO_ENC0_B   8   // Encoder đọc bánh dẫn động
+#define IO_LED      13  // Chân LED báo hiệu
 
 // TODO: đổi Arduino pin thành IO port ATmega328P (?)
 

@@ -76,6 +76,26 @@ void sys_init()
 }
 
 /**
+ * Cho dừng hệ thống do bị lỗi hoặc mục đích khác.
+ * Chủ yếu là dừng các động cơ và dừng ngắt bộ
+ * định thời để không chạy vòng lặp cập nhật.
+ */
+void sys_halt()
+{
+  // Dừng bộ định thời bằng cách xóa thanh ghi chọn
+  // xung clock đầu vào của nó
+  TCCR2B &= ~(_BV(CS22) | _BV(CS21) | _BV(CS20));
+
+  // Dừng các động cơ
+  digitalWrite(IO_DRIVE_P, LOW);
+  digitalWrite(IO_DRIVE_H1, LOW);
+  digitalWrite(IO_DRIVE_H2, LOW);
+  digitalWrite(IO_STEER_P, LOW);
+  digitalWrite(IO_STEER_H1, LOW);
+  digitalWrite(IO_STEER_H2, LOW);
+}
+
+/**
  * Lấy dữ liệu về tốc độ hiện tại.
  * Đơn vị ngõ ra: m/s.
  */

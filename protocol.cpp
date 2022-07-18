@@ -30,6 +30,9 @@ float protocol_steer_ref_buff;
  */
 void protocol_init()
 {
+  // Cài đặt chân LED báo hiệu
+  pinMode(IO_LED, OUTPUT);
+
   // Bắt đầu truyền thông
   Serial.begin(BAUDRATE);
 }
@@ -65,7 +68,7 @@ void protocol_loop()
       uint32_t *comp_ptr;   // Con trỏ chỉ vào các vùng soát lỗi
 
       // Đọc chuỗi truyền.
-      // Khung truyền thông theo bảng bên dưới:
+      // Khung truyền thông theo bảng bên dưới (17 bit):
       //  ____________________________________________
       // |    |    |    |    |    |    |    |    |    |
       // | 00 | 01 | 02 | 03 | 04 | 05 | 06 | 07 | 08 |
@@ -82,13 +85,13 @@ void protocol_loop()
       // |___________________|____|____|____|____|____|
       // Trong đó:
       // - Bit 0:3; 5:8; 13:16 là các bit đệm để kiểm
-      // tra lỗi truyền.
-      // - Bit 4 chứa mã lệnh.
-      // - Bit 9:12 chúa giá trị truyền (integer 32bit
-      // hoặc float 32bit)
+      // tra lỗi truyền (FF).
+      // - Bit 4 chứa mã lệnh (C).
+      // - Bit 9:12 chúa giá trị truyền
+      // (VALUE, integer 32bit hoặc float 32bit)
       for (int i = 0; i < 17; i++) buffer[i] = Serial.read();
 
-      // Kiểm tra 12 bit đệm 
+      // Kiểm tra 12 bit đệm
       comp_ptr = (uint32_t*)(buffer);
       if (*comp_ptr != BUFFERING_LONG) goto protocol_error;
       comp_ptr = (uint32_t*)(buffer+5);
@@ -151,9 +154,21 @@ protocol_error:
     }
   }
 
+  // khi bị lỗi sẽ cho dừng xe
+  protocol_drive_ref_buff = 0;
+  protocol_steer_ref_buff = sys_get_heading();
+  protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
+
+  // Cho dừng hệ thống
+  sys_halt();
+
+  // Chạy vòng lặp báo lỗi
+  uint8_t led_state = 0;
   while (protocol_flags & PROTOCOL_FLAG_ERROR)
   {
-    // TODO: thêm cách báo lỗi
+    led_state = !led_state;           // luân phiên trạng thái
+    digitalWrite(IO_LED, led_state);  // chớp tắt
+    delay(250);                       // Chu kỳ = 0.5s
+    // TODO: thêm cách thoát khỏi vòng lặp lỗi
   }
-
 }
