@@ -4,6 +4,18 @@
 #ifndef AGV_H
 #define AGV_H
 
+#define DEBUG 1
+
+#if DEBUG
+  extern volatile long debugval;
+  extern volatile long *debugval_ptr;
+  #define dprint(m) Serial.print(m)
+  #define dprintln(m) Serial.println(m)
+#else
+  #define dprint(m)
+  #define dprintln(m)
+#endif
+
 // nhập thư viện chuẩn
 #include <stdint.h>     // Cần để khai báo các biến số nguyên
 #include <stdlib.h>     // Hàm memset và strcpy

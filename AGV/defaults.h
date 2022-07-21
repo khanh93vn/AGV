@@ -32,7 +32,7 @@
 // LƯU Ý KHI ĐIỀU CHỈNH PHẢI ĐẢM BẢO
 // THANH GHI ORC CỦA BỘ ĐỊNH THỜI ĐƯỢC CHỌN
 // KHÔNG BỊ TRÀN
-#define CLK_SEL         0b111
+#define CLK_SEL         (_BV(CS22) | _BV(CS21) | _BV(CS20))
 
 // CÁC GIÁ TRỊ KHÔNG ĐƯỢC PHÉP THAY ĐỔI ---------------------------------------
 
@@ -43,21 +43,23 @@
 #define BAUDRATE        115200
 
 // Tần số clock hệ thống
-#define F_CK            16000000L
+//#define F_CPU           16000000L
 
 // Tần số đếm sau khi qua bộ chia
-#if CLK_SEL == 0b001
-  #define F_CT (F_CK >> 3)
-#elif CLK_SEL == 0b010
-  #define F_CT (F_CK >> 5)
-#elif CLK_SEL == 0b011
-  #define F_CT (F_CK >> 6)
-#elif CLK_SEL == 0b101
-  #define F_CT (F_CK >> 7)
-#elif CLK_SEL == 0b110
-  #define F_CT (F_CK >> 8)
-#elif CLK_SEL == 0b111
-  #define F_CT (F_CK >> 10)
+#if CLK_SEL == _BV(CS20)                            // 001
+  #define F_CT F_CPU
+#elif CLK_SEL == _BV(CS21)                          // 010
+  #define F_CT (F_CPU >> 3)
+#elif CLK_SEL == (_BV(CS21) | _BV(CS20))            // 011
+  #define F_CT (F_CPU >> 5)
+#elif CLK_SEL == _BV(CS22)                          // 100
+  #define F_CT (F_CPU >> 6)
+#elif CLK_SEL == (_BV(CS22) | _BV(CS20))            // 101
+  #define F_CT (F_CPU >> 7)
+#elif CLK_SEL == (_BV(CS22) | _BV(CS21))            // 110
+  #define F_CT (F_CPU >> 8)
+#elif CLK_SEL == (_BV(CS22) | _BV(CS21) | _BV(CS20))// 111
+  #define F_CT (F_CPU >> 10)
 #else
   #error "No clock source!"
 #endif

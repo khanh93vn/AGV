@@ -48,7 +48,9 @@ void sys_init()
   TCCR2B &= ~(_BV(CS22) | _BV(CS21) | _BV(CS20));
 
   // Chế độ CTC (WGM21:0 = 10)
-  TCCR2A |= _BV(WGM21); TCCR2B &= ~_BV(WGM22);
+  TCCR2A &= ~_BV(WGM20);
+  TCCR2A |= _BV(WGM21);
+  TCCR2B &= ~_BV(WGM22);
 
   // Chế độ ngắt (COM2A1:0 = 00 và COM2B1:0 = 00)
   TCCR2A &= ~(_BV(COM2A1) | _BV(COM2A0) | _BV(COM2B1) | _BV(COM2B0));
@@ -67,12 +69,17 @@ void sys_init()
   // chia 1024, giá trị OCR là 124 thì tần số ngắt là:
   // 16000000/(1024*(124+1)) = 125
   OCR2A = (uint8_t)(F_CT/UPDATE_RATE - 1);
+  dprint("Tần số CPU:"); dprintln(F_CPU);
+  dprint("Tần số đếm:"); dprintln(F_CT);
+  dprint("Giá trị OCR2A:"); dprintln(OCR2A);
 
   // Chọn xung đếm từ clock hệ thống và chế độ bộ chia
   // Có thể tham khảo giá trị bộ chia từ datasheet của vđk
   // Ví dụ bộ chia 1024 thì CS22:0 = 111
   TCCR2B &= ~(_BV(CS22) | _BV(CS21) | _BV(CS20)); // reset CS22:0 về 000
-  TCCR2B |= CLK_SEL;
+  //TCCR2B |= CLK_SEL;
+  //TCCR2B |= _BV(CS21);
+  TCCR2B |= _BV(CS22) | _BV(CS21) | _BV(CS20);
 }
 
 /**
@@ -137,6 +144,7 @@ ISR (PCINT2_vect)
  */
 ISR(TIMER2_COMPA_vect)
 {
+  debugval++;
   // I) Cập nhật dữ liệu encoder
 
   // Chuyển giá trị qua encoder_pos_prime

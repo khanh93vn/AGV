@@ -56,7 +56,13 @@ void protocol_reset()
  */
 void protocol_loop()
 {
+  while(1) {
+    debugval = 0;
+    delay(1000);
+    dprintln(debugval);
+  }
   // Bắt đầu nhận tín hiệu truyền thông
+  dprintln("Bắt đầu nhận truyền thông");
   protocol_flags |= PROTOCOL_FLAG_RECEIVING;
   while (protocol_flags & PROTOCOL_FLAG_RECEIVING)
   {
@@ -148,6 +154,7 @@ void protocol_loop()
         break;
       default:  // có lỗi xảy ra, thoát
 protocol_error:
+        dprintln("Có lỗi xảy ra");
         protocol_flags &= ~PROTOCOL_FLAG_RECEIVING;
         protocol_flags |= PROTOCOL_FLAG_ERROR;
       }
@@ -161,7 +168,10 @@ protocol_error:
 
   // Cho dừng hệ thống
   sys_halt();
+  dprintln("Đã cho dừng hệ thống");
 
+  protocol_flags &= ~PROTOCOL_FLAG_RECEIVING;
+  protocol_flags |= PROTOCOL_FLAG_ERROR;
   // Chạy vòng lặp báo lỗi
   uint8_t led_state = 0;
   while (protocol_flags & PROTOCOL_FLAG_ERROR)
