@@ -6,6 +6,9 @@
 #include "agv.h"
 
 // Các biến toàn cục của module ----------------------------------------------
+// Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
+volatile uint32_t sys_sample_cnt;
+
 // Biến đọc cập nhật encoder
 volatile int16_t encoder_pulse_cnt;
 
@@ -144,7 +147,7 @@ ISR (PCINT2_vect)
  */
 ISR(TIMER2_COMPA_vect)
 {
-  debugval++;
+  debugval01++;
   // I) Cập nhật dữ liệu encoder
 
   // Chuyển giá trị qua encoder_pos_prime
@@ -178,4 +181,7 @@ ISR(TIMER2_COMPA_vect)
   // V) Gửi dữ liệu trạng thái qua UART, dữ liệu bao gồm
   // các thông số thay đổi vị trí và góc lái so với chu kỳ trước
 
+  if (protocol_flags & PROTOCOL_FLAG_SAMPLE_RATE) {
+    sys_sample_cnt++;
+  }
 }

@@ -13,9 +13,9 @@
 #define WHEEL_DIAMETER  0.05
 
 // Thông số PID mặc định
-#define DRIVE_KP        0.5
-#define DRIVE_KI        0.0
-#define DRIVE_KD        0.0
+#define DRIVE_KP        1.5
+#define DRIVE_KI        0.1
+#define DRIVE_KD        0.1
 #define STEER_KP        0.5
 #define STEER_KI        0.0
 #define STEER_KD        0.0

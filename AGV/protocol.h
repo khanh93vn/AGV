@@ -5,10 +5,11 @@
 #define PROTOCOL_H
 
 // Các cờ của module
-#define PROTOCOL_FLAG_STOPPED     0x00  // mặc định
-#define PROTOCOL_FLAG_RECEIVING   0x01  //
-#define PROTOCOL_FLAG_ERROR       0x02  //
-#define PROTOCOL_FLAG_UPDATE_REF  0x04  // Đánh dấu cập nhật tham chiếu
+#define PROTOCOL_FLAG_CLEARED     0x00  // Xóa tất cả các cờ
+#define PROTOCOL_FLAG_RECEIVING   0x01  // Cờ báo sẵn sàng nhận
+#define PROTOCOL_FLAG_ERROR       0x02  // Cờ báo hiệu hệ thống lỗi
+#define PROTOCOL_FLAG_UPDATE_REF  0x04  // Cờ cập nhật tham chiếu
+#define PROTOCOL_FLAG_SAMPLE_RATE 0x08  // Cờ đo tần số lấy mẫu
 
 extern volatile uint8_t protocol_flags;
 

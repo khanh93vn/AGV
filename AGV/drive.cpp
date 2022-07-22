@@ -47,8 +47,8 @@ void drive_step()
 
   // Chỉnh chiều quay
   digitalWrite(IO_DRIVE_H1, direction_bit);
-  digitalWrite(IO_DRIVE_H1, !direction_bit);
-
+  digitalWrite(IO_DRIVE_H2, !direction_bit);
+  
   // Ngõ ra phải trong đoạn [0.0, 1.0]
   if (duty_cycle > 1.0) duty_cycle = 1.0;
 

@@ -6,6 +6,11 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
+// Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
+extern volatile uint32_t sys_sample_cnt;
+
+// Biến xác định xe đã dừng hẳn
+
 // Khởi động hệ thống
 void sys_init();
 

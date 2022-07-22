@@ -28,14 +28,15 @@ float pid_step(pid_t *pid, float i)
   e = pid->ref - i;
 
   // Tính thay đổi của e so với chu kỳ trước
-  de = e - pid->pe;
+  de = (e - pid->pe);
 
   // Tính tích phân
-  //pid->se += (e + pid->pe)/2*dt;
-  pid->se += e + pid->pe;
+  pid->se += (e + pid->pe)/2*dt;
+  //pid->se += e + pid->pe;
 
   // Tính giá trị ngõ ra
-  o = pid->kp*e + pid->ki*pid->se + pid->kd*de;
+  o = pid->kp*e + pid->ki*pid->se + pid->kd*de/dt;
+  //o = pid->kp*e + pid->ki*pid->se + pid->kd*de;
 
   // e của chu kỳ này là pe của chu kỳ kế tiếp
   pid->pe = e;

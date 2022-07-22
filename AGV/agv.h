@@ -7,7 +7,7 @@
 #define DEBUG 1
 
 #if DEBUG
-  extern volatile long debugval;
+  extern volatile long debugval01, debugval02;
   extern volatile long *debugval_ptr;
   #define dprint(m) Serial.print(m)
   #define dprintln(m) Serial.println(m)

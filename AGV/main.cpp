@@ -4,8 +4,8 @@
 #include "agv.h"
 
 #if DEBUG
-  volatile long debugval;
-  volatile long *debugval_ptr = &debugval;
+  volatile long debugval01, debugval02;
+  volatile long *debugval_ptr = &debugval01;
 #endif
 
 int main()

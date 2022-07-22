@@ -4,20 +4,21 @@
 #include "agv.h"
 
 // Các mã lệnh điều khiển
-#define PROTOCOL_STOP             0x01
-#define PROTOCOL_UPDATE_REF       0x02
-#define PROTOCOL_SET_DRIVE_REF    0x03
-#define PROTOCOL_SET_DRIVE_KP     0x04
-#define PROTOCOL_SET_DRIVE_KI     0x05
-#define PROTOCOL_SET_DRIVE_KD     0x06
-#define PROTOCOL_SET_STEER_REF    0x07
-#define PROTOCOL_SET_STEER_KP     0x08
-#define PROTOCOL_SET_STEER_KI     0x09
-#define PROTOCOL_SET_STEER_KD     0x0A
-#define PROTOCOL_SET_WHEEL_D      0x0B
-#define PROTOCOL_SET_ENCODER_PPR  0x0C
+#define PROTOCOL_STOP             0x01  // Dừng
+#define PROTOCOL_UPDATE_REF       0x02  // Cập nhật tham chiếu
+#define PROTOCOL_SET_DRIVE_REF    0x03  // Set tham chiếu dẫn động (tốc độ tiến-lùi)
+#define PROTOCOL_SET_DRIVE_KP     0x04  // Set Kp dẫn động
+#define PROTOCOL_SET_DRIVE_KI     0x05  // Set Ki dẫn động
+#define PROTOCOL_SET_DRIVE_KD     0x06  // Set Kd dẫn động
+#define PROTOCOL_SET_STEER_REF    0x07  // Set tham chiếu góc lái
+#define PROTOCOL_SET_STEER_KP     0x08  // Set Kp lái
+#define PROTOCOL_SET_STEER_KI     0x09  // Set Ki lái
+#define PROTOCOL_SET_STEER_KD     0x0A  // Set Kd lái
+#define PROTOCOL_SET_WHEEL_D      0x0B  // Cập nhật đường kính bánh xe
+#define PROTOCOL_SET_ENCODER_PPR  0x0C  // Cập nhật số xung/vòng của encoder
+#define PROTOCOL_GET_SAMPLE_RATE  0x0D  // Test tần số lấy mẫu
 
-#define BUFFERING_LONG            0xFFFFFFFF
+#define PROTOCOL_PAD              0xFFFFFFFF
 
 // Các biến toàn cục ----------------------------------------------------------
 volatile uint8_t protocol_flags;
@@ -46,7 +47,7 @@ void protocol_reset()
   while (Serial.available()) Serial.read();
 
   // reset cờ hiệu
-  protocol_flags = PROTOCOL_FLAG_STOPPED;
+  protocol_flags = PROTOCOL_FLAG_CLEARED;
 }
 
 /**
@@ -56,11 +57,6 @@ void protocol_reset()
  */
 void protocol_loop()
 {
-  while(1) {
-    debugval = 0;
-    delay(1000);
-    dprintln(debugval);
-  }
   // Bắt đầu nhận tín hiệu truyền thông
   dprintln("Bắt đầu nhận truyền thông");
   protocol_flags |= PROTOCOL_FLAG_RECEIVING;
@@ -70,7 +66,7 @@ void protocol_loop()
       // I) Khai báo biến
       uint8_t buffer[18];   // Vùng nhớ chứa chuỗi truyền
       uint8_t ctrl_code;    // Mã lệnh
-      float *ctrl_val;      // Con trỏ giá trị truyền
+      float *ctrl_val_ptr;  // Con trỏ giá trị truyền
       uint32_t *comp_ptr;   // Con trỏ chỉ vào các vùng soát lỗi
 
       // Đọc chuỗi truyền.
@@ -99,11 +95,11 @@ void protocol_loop()
 
       // Kiểm tra 12 bit đệm
       comp_ptr = (uint32_t*)(buffer);
-      if (*comp_ptr != BUFFERING_LONG) goto protocol_error;
+      if (*comp_ptr != PROTOCOL_PAD) goto protocol_error;
       comp_ptr = (uint32_t*)(buffer+5);
-      if (*comp_ptr != BUFFERING_LONG) goto protocol_error;
+      if (*comp_ptr != PROTOCOL_PAD) goto protocol_error;
       comp_ptr = (uint32_t*)(buffer+13);
-      if (*comp_ptr != BUFFERING_LONG) goto protocol_error;
+      if (*comp_ptr != PROTOCOL_PAD) goto protocol_error;
 
       // Một số thông số cần đảm bảo xe dừng hẳn
       // trước khi thay đổi
@@ -111,46 +107,84 @@ void protocol_loop()
 
       // Giải mã tín hiệu
       ctrl_code = buffer[4];
-      ctrl_val = (float*)(buffer + 9);
-
+      ctrl_val_ptr = (float*)(buffer + 9);
       switch(ctrl_code)
       {
       case PROTOCOL_STOP:           // Dừng
         protocol_drive_ref_buff = 0;
         protocol_steer_ref_buff = sys_get_heading();
+        dprintln("Đã dừng");
         // Thực hiện tiếp tục lệnh bên dưới
       case PROTOCOL_UPDATE_REF:     // Cập nhật tham chiếu
         protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
+        dprintln("Đã cập nhật tham chiếu");
         break;
       case PROTOCOL_SET_DRIVE_REF:  // Đổi tham chiếu dẫn động
-        protocol_drive_ref_buff = *ctrl_val;
+        protocol_drive_ref_buff = *ctrl_val_ptr;
+        dprint("Tham chiếu dẫn động mới: ");
+        dprint(protocol_drive_ref_buff);
+        dprintln(" m/s");
         break;
       case PROTOCOL_SET_DRIVE_KP:   // Đổi kp
-        if (agv_is_stopped) drive_pid.kp = *ctrl_val;
+        if (agv_is_stopped) drive_pid.kp = *ctrl_val_ptr;
+        dprint("kp dẫn động mới: ");
+        dprintln(drive_pid.kp);
         break;
       case PROTOCOL_SET_DRIVE_KI:   // Đổi ki
-        if (agv_is_stopped) drive_pid.ki = *ctrl_val;
+        if (agv_is_stopped) drive_pid.ki = *ctrl_val_ptr;
+        dprint("ki dẫn động mới: ");
+        dprintln(drive_pid.ki);
         break;
       case PROTOCOL_SET_DRIVE_KD:   // Đổi kd
-        if (agv_is_stopped) drive_pid.kd = *ctrl_val;
+        if (agv_is_stopped) drive_pid.kd = *ctrl_val_ptr;
+        dprint("kd dẫn động mới: ");
+        dprintln(drive_pid.kd);
         break;
       case PROTOCOL_SET_STEER_REF:  // Đổi tham chiếu lái
-        protocol_steer_ref_buff = *ctrl_val;
+        protocol_steer_ref_buff = *ctrl_val_ptr;
+        dprint("Tham chiếu lái mới: ");
+        dprint(protocol_steer_ref_buff);
+        dprintln(" radians");
         break;
-      case PROTOCOL_SET_STEER_KP:
-        if (agv_is_stopped) steer_pid.kp = *ctrl_val;
+      case PROTOCOL_SET_STEER_KP:   // Đổi kp lái
+        if (agv_is_stopped) steer_pid.kp = *ctrl_val_ptr;
+        dprint("kp lái mới: ");
+        dprintln(steer_pid.kp);
         break;
-      case PROTOCOL_SET_STEER_KI:
-        if (agv_is_stopped) steer_pid.ki = *ctrl_val;
+      case PROTOCOL_SET_STEER_KI:   // Đổi ki lái
+        if (agv_is_stopped) steer_pid.ki = *ctrl_val_ptr;
+        dprint("ki lái mới: ");
+        dprintln(steer_pid.ki);
         break;
-      case PROTOCOL_SET_STEER_KD:
-        if (agv_is_stopped) steer_pid.kd = *ctrl_val;
+      case PROTOCOL_SET_STEER_KD:   // Đổi kd lái
+        if (agv_is_stopped) steer_pid.kd = *ctrl_val_ptr;
+        dprint("kd lái mới: ");
+        dprintln(steer_pid.kd);
         break;
-      case PROTOCOL_SET_WHEEL_D:
-        if (agv_is_stopped) settings.wheel_diameter = *ctrl_val;
+      case PROTOCOL_SET_WHEEL_D:    // cập nhật đường kính bánh dẫn động
+        if (agv_is_stopped) settings.wheel_diameter = *ctrl_val_ptr;
+        dprint("Đường kính bánh xe đã cập nhật: ");
+        dprint(settings.wheel_diameter);
+        dprintln(" m");
         break;
-      case PROTOCOL_SET_ENCODER_PPR:
-        if (agv_is_stopped) settings.encoder_ppr = *ctrl_val;
+      case PROTOCOL_SET_ENCODER_PPR:  // cập nhật số cài đặt xung/vòng của encoder
+        if (agv_is_stopped) settings.encoder_ppr = *ctrl_val_ptr;
+        dprint("Số xung/vòng encoder đã cập nhật: ");
+        dprint(settings.encoder_ppr);
+        dprintln(" m");
+        break;
+      case PROTOCOL_GET_SAMPLE_RATE:  // test tần số lấy mẫu
+        if (agv_is_stopped) {
+          protocol_flags &= ~PROTOCOL_FLAG_RECEIVING;
+
+          // bắt đầu test
+          sys_sample_cnt = 0;
+          protocol_flags |= PROTOCOL_FLAG_SAMPLE_RATE;
+          delay(1000);
+          dprint("Số lần lấy mẫu trong 1s: "); dprintln(sys_sample_cnt);
+          protocol_flags &= ~PROTOCOL_FLAG_SAMPLE_RATE;
+          protocol_flags |= PROTOCOL_FLAG_RECEIVING;
+        }
         break;
       default:  // có lỗi xảy ra, thoát
 protocol_error:
