@@ -5,7 +5,7 @@
 #define DRIVE_H
 
 // Dữ liệu điều khiển PID của bánh dẫn động
-extern pid_t drive_pid;
+extern volatile pid_t drive_pid;
 
 // Khởi tạo
 void drive_init();

@@ -20,6 +20,9 @@ int main()
   // Khởi tạo thông số cài đặt
   settings_init();
 
+  // Khởi động module imu (đọc cảm biến quán tính)
+  imu_init();
+
   // Khởi động truyền thông
   protocol_init();
   dprintln("Hoàn tất khởi động module protocol");

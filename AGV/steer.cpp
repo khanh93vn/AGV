@@ -5,7 +5,7 @@
 
 // Các biến toàn cục ----------------------------------------------------------
 // Dữ liệu điều khiển PID của cơ cấu lái
-pid_t steer_pid;
+volatile pid_t steer_pid;
 
 // Các chương trình con --------------------------------------------------------
 /**
@@ -20,6 +20,8 @@ void steer_init()
 
   // II) Reset bộ PID
   pid_init(&steer_pid);
+
+  steer_pid.ref = PI;
 }
 
 /**
@@ -27,14 +29,17 @@ void steer_init()
  */
 void steer_step()
 {
-  float heading, duty_cycle;
+  float heading, duty_cycle, heading_error;
   uint8_t direction_bit;
 
-  // I) Cập nhật hướng từ cảm biến góc xoay
+  // I) Tính sai số
   heading = sys_get_heading();
+  heading_error = steer_pid.ref - heading;
+  while (heading_error > PI) heading_error -= TWO_PI;
+  while (heading_error < -PI) heading_error += TWO_PI;
 
   // II) Cập nhật bộ điều khiển PID
-  duty_cycle = pid_step(&steer_pid, heading);
+  duty_cycle = pid_stp_from_error(&steer_pid, heading_error);
 
   // III) Điều khiển động cơ
 
@@ -51,7 +56,7 @@ void steer_step()
 
   // Ngõ ra phải trong đoạn [0.0, 1.0]
   if (duty_cycle > 1.0) duty_cycle = 1.0;
-
+  
   // Chỉnh tỷ lệ áp ngõ ra
   analogWrite(IO_STEER_P, (uint8_t)(duty_cycle*255));
 

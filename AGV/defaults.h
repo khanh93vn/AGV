@@ -13,12 +13,13 @@
 #define WHEEL_DIAMETER  0.05
 
 // Thông số PID mặc định
-#define DRIVE_KP        1.5
+#define SE_DECAY        0.999
+#define DRIVE_KP        5.0
 #define DRIVE_KI        0.1
-#define DRIVE_KD        0.1
-#define STEER_KP        0.5
-#define STEER_KI        0.0
-#define STEER_KD        0.0
+#define DRIVE_KD        0.5
+#define STEER_KP        20.0
+#define STEER_KI        0.2
+#define STEER_KD        1.0
 
 // Các giá trị yêu cầu thận trọng khi thay đổi -------------------------------
 
@@ -38,6 +39,7 @@
 
 // Các hằng số
 #define PI              3.141592653589793238
+#define TWO_PI          6.283185307179586
 
 // Tần số truyền thông UART
 #define BAUDRATE        115200

@@ -15,13 +15,13 @@ volatile int16_t encoder_pulse_cnt;
 // Biến đếm số xung encoder di chuyển được mỗi chu kỳ ngắt.
 // Tương đương với vận tốc trung bình.
 // Đơn vị: (sỗ xung encoder)/(chu kỳ ngắt)
-int16_t encoder_pos_dot;
+volatile int16_t encoder_pos_dot;
 
 // Biến lưu vị trí encoder. Đơn vị: số xung encoder
-int64_t encoder_position;
+volatile int64_t encoder_position;
 
 // Góc xoay đầu xe
-float vehicle_heading;
+volatile float vehicle_heading;
 
 // Các chương trình con --------------------------------------------------------
 /**
@@ -31,16 +31,16 @@ float vehicle_heading;
 void sys_init()
 {
   // I) Thiết lập hệ đọc encoder
-
+  
   // Thiết lập chế độ input cho chân đọc encoder
   pinMode(IO_ENC0_A, INPUT_PULLUP);
   pinMode(IO_ENC0_B, INPUT_PULLUP);
-
+  
   // Thiết lập ngắt khi chân IO_ENC0_A thay đổi trạng thái
   *digitalPinToPCMSK(IO_ENC0_A) |= bit(digitalPinToPCMSKbit(IO_ENC0_A));
   PCIFR  |= bit(digitalPinToPCICRbit(IO_ENC0_A)); // xóa các cờ ngắt hiện tại
   PCICR  |= bit(digitalPinToPCICRbit(IO_ENC0_A)); // cho phép ngắt
-
+  
   // Reset các biến đọc encoder
   encoder_pulse_cnt = 0;
   encoder_pos_dot = 0;
@@ -115,6 +115,15 @@ float sys_get_spd()
 }
 
 /**
+ * Lấy dữ liệu về vị trí bánh xe.
+ * Đơn vị ngõ ra: radians.
+ */
+float sys_get_wheel_angle()
+{
+  return TWO_PI*encoder_position/settings.encoder_ppr;
+}
+
+/**
  * Lấy dữ liệu về góc xoay hiện tại.
  * Đơn vị ngõ ra: radians.
  */
@@ -173,14 +182,15 @@ ISR(TIMER2_COMPA_vect)
   drive_step();
 
   // III) Cập nhật góc đầu xe từ cảm biến quán tính
-
+  vehicle_heading = imu_get_angle();
 
   // IV) Chạy bộ điều khiển PID góc lái
   steer_step();
 
   // V) Gửi dữ liệu trạng thái qua UART, dữ liệu bao gồm
   // các thông số thay đổi vị trí và góc lái so với chu kỳ trước
-
+  //dprintln((int32_t)encoder_position);
+  
   if (protocol_flags & PROTOCOL_FLAG_SAMPLE_RATE) {
     sys_sample_cnt++;
   }

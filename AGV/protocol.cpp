@@ -17,6 +17,8 @@
 #define PROTOCOL_SET_WHEEL_D      0x0B  // Cập nhật đường kính bánh xe
 #define PROTOCOL_SET_ENCODER_PPR  0x0C  // Cập nhật số xung/vòng của encoder
 #define PROTOCOL_GET_SAMPLE_RATE  0x0D  // Test tần số lấy mẫu
+#define PROTOCOL_SET_DRIVE_DECAY  0x0E  // Set hệ số tắt dần pid dẫn động
+#define PROTOCOL_SET_STEER_DECAY  0x0F  // Set hệ số tắt dần pid lái
 
 #define PROTOCOL_PAD              0xFFFFFFFF
 
@@ -62,6 +64,13 @@ void protocol_loop()
   protocol_flags |= PROTOCOL_FLAG_RECEIVING;
   while (protocol_flags & PROTOCOL_FLAG_RECEIVING)
   {
+    /*
+    float spd = sys_get_spd();
+    if (spd != 0) {
+      dprint(sys_get_heading());
+      dprint(' ');
+      dprintln(sys_get_wheel_angle());
+    }*/
     if (Serial.available() >= 17) {
       // I) Khai báo biến
       uint8_t buffer[18];   // Vùng nhớ chứa chuỗi truyền
@@ -111,8 +120,7 @@ void protocol_loop()
       switch(ctrl_code)
       {
       case PROTOCOL_STOP:           // Dừng
-        protocol_drive_ref_buff = 0;
-        protocol_steer_ref_buff = sys_get_heading();
+        protocol_stop();
         dprintln("Đã dừng");
         // Thực hiện tiếp tục lệnh bên dưới
       case PROTOCOL_UPDATE_REF:     // Cập nhật tham chiếu
@@ -123,7 +131,7 @@ void protocol_loop()
         protocol_drive_ref_buff = *ctrl_val_ptr;
         dprint("Tham chiếu dẫn động mới: ");
         dprint(protocol_drive_ref_buff);
-        dprintln(" m/s");
+        dprintln(" radians");
         break;
       case PROTOCOL_SET_DRIVE_KP:   // Đổi kp
         if (agv_is_stopped) drive_pid.kp = *ctrl_val_ptr;
@@ -186,6 +194,12 @@ void protocol_loop()
           protocol_flags |= PROTOCOL_FLAG_RECEIVING;
         }
         break;
+      case PROTOCOL_SET_DRIVE_DECAY:  // set hệ số tắt dần
+        drive_pid.se_decay = *ctrl_val_ptr;
+        break;
+      case PROTOCOL_SET_STEER_DECAY:  // set hệ số tắt dần
+        steer_pid.se_decay = *ctrl_val_ptr;
+        break;
       default:  // có lỗi xảy ra, thoát
 protocol_error:
         dprintln("Có lỗi xảy ra");
@@ -196,8 +210,7 @@ protocol_error:
   }
 
   // khi bị lỗi sẽ cho dừng xe
-  protocol_drive_ref_buff = 0;
-  protocol_steer_ref_buff = sys_get_heading();
+  protocol_stop();
   protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
 
   // Cho dừng hệ thống
@@ -215,4 +228,15 @@ protocol_error:
     delay(250);                       // Chu kỳ = 0.5s
     // TODO: thêm cách thoát khỏi vòng lặp lỗi
   }
+}
+
+/**
+ * Cho dừng xe. Reset trị số tích phân trong các bộ PID.
+ */
+void protocol_stop()
+{
+  protocol_drive_ref_buff = sys_get_wheel_angle();
+  protocol_steer_ref_buff = sys_get_heading();
+  drive_pid.se = 0;
+  steer_pid.se = 0;
 }

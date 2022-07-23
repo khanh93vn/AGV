@@ -5,7 +5,7 @@
 #define STEER_H
 
 // Dữ liệu điều khiển PID của cơ cấu lái
-extern pid_t steer_pid;
+extern volatile pid_t steer_pid;
 
 // Khởi tạo
 void steer_init();

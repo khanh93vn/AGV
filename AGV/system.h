@@ -20,6 +20,9 @@ void sys_halt();
 // Lấy dữ liệu về tốc độ hiện tại (m/s)
 float sys_get_spd();
 
+// Lấy dữ liệu vị trí bánh xe (radians)
+float sys_get_wheel_angle();
+
 // Lấy dữ liệu về góc quay hiện tại (radians)
 float sys_get_heading();
 

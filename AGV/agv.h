@@ -1,5 +1,5 @@
 // File: agv.h
-// Tổng hợp các thư viện và module.
+// Tổng hợp các việnthư viện và module.
 
 #ifndef AGV_H
 #define AGV_H
@@ -23,6 +23,13 @@
 #include <Arduino.h>    // Thư viện Arduino
 #include <HardwareSerial.h> // Thư viện truyền thông UART
 
+// nhập thư viện cộng đồng
+#include <I2Cdev.h>
+#include <MPU6050_6Axis_MotionApps20.h>
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+    #include <Wire.h>
+#endif
+
 // nhập các module
 #include "cpu_map.h"    // Khai báo chân GPIO và các thanh ghi
 #include "defaults.h"   // Các thông số mặc định và hằng số
@@ -30,6 +37,7 @@
 #include "pid.h"        // Code thư viện PID đơn giản
 #include "drive.h"      // Module điều khiển bánh dẫn động
 #include "steer.h"      // Module điều khiển động cơ lái
+#include "imu.h"        // Module đọc cảm biến quán tính (MPU6050)
 #include "protocol.h"   // Module truyền thông, giao tiếp
 #include "system.h"     // Module quản lý thực thi hệ thống thời gian thực
 

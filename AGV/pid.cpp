@@ -22,24 +22,33 @@ void pid_init(pid_t *pid)
  */
 float pid_step(pid_t *pid, float i)
 {
-  float de, e, o;
+  float e = pid->ref - i;
+  return pid_stp_from_error(pid, e);
+}
 
-  // Tính sai số e
-  e = pid->ref - i;
-
+/**
+ * Nhận giá trị sai số, thực hiện cập nhật
+ * và gửi tín hiệu ngõ ra.
+ */
+float pid_stp_from_error(pid_t *pid, float e)
+{
+  float de, u;
+  
   // Tính thay đổi của e so với chu kỳ trước
   de = (e - pid->pe);
 
   // Tính tích phân
-  pid->se += (e + pid->pe)/2*dt;
-  //pid->se += e + pid->pe;
+  pid->se = pid->se_decay*pid->se + (e + pid->pe)/2*dt;
+  //pid->se = pid->se + (e + pid->pe)/2*dt;
+  
+  //pid->se += (e + pid->pe)/2;
 
   // Tính giá trị ngõ ra
-  o = pid->kp*e + pid->ki*pid->se + pid->kd*de/dt;
-  //o = pid->kp*e + pid->ki*pid->se + pid->kd*de;
+  u = pid->kp*e + pid->ki*pid->se + pid->kd*de/dt;
+  //u = pid->kp*e + pid->ki*pid->se + pid->kd*de;
 
   // e của chu kỳ này là pe của chu kỳ kế tiếp
   pid->pe = e;
 
-  return o;
+  return u;
 }

@@ -32,4 +32,7 @@ void protocol_reset();
 // Vòng lặp chính
 void protocol_loop();
 
+// Dừng xe
+void protocol_stop();
+
 #endif

@@ -5,7 +5,7 @@
 
 // Các biến toàn cục ----------------------------------------------------------
 // Dữ liệu điều khiển PID của bánh dẫn động
-pid_t drive_pid;
+volatile pid_t drive_pid;
 
 // Các chương trình con --------------------------------------------------------
 /**
@@ -27,14 +27,14 @@ void drive_init()
  */
 void drive_step()
 {
-  float speed, duty_cycle;
+  float wheel_angle, duty_cycle;
   uint8_t direction_bit;
 
   // I) Cập nhật tốc độ từ hệ thống đọc encoder
-  speed = sys_get_spd();
+  wheel_angle = sys_get_wheel_angle();
 
   // II) Cập nhật bộ điều khiển PID
-  duty_cycle = pid_step(&drive_pid, speed);
+  duty_cycle = pid_step(&drive_pid, wheel_angle);
 
   // III) Điều khiển động cơ
 
@@ -51,7 +51,7 @@ void drive_step()
   
   // Ngõ ra phải trong đoạn [0.0, 1.0]
   if (duty_cycle > 1.0) duty_cycle = 1.0;
-
+  
   // Chỉnh tỷ lệ áp ngõ ra
   analogWrite(IO_DRIVE_P, (uint8_t)(duty_cycle*255));
 }

@@ -43,11 +43,13 @@ void settings_init()
   ext_settings.drive_pid_params[0] = DRIVE_KP;
   ext_settings.drive_pid_params[1] = DRIVE_KI;
   ext_settings.drive_pid_params[2] = DRIVE_KD;
+  ext_settings.drive_pid_params[3] = SE_DECAY;
 
   // Thông số PID hệ thống lái
   ext_settings.steer_pid_params[0] = STEER_KP;
   ext_settings.steer_pid_params[1] = STEER_KI;
   ext_settings.steer_pid_params[2] = STEER_KD;
+  ext_settings.steer_pid_params[3] = SE_DECAY;
 
   // TODO: thêm phần load cài đặt từ EEPROM
 }

@@ -21,6 +21,8 @@ PROTOCOL_SET_STEER_KD     = b'\x0A'
 PROTOCOL_SET_WHEEL_D      = b'\x0B'
 PROTOCOL_SET_ENCODER_PPR  = b'\x0C'
 PROTOCOL_GET_SAMPLE_RATE  = b'\x0D'
+PROTOCOL_SET_DRIVE_DECAY  = b'\x0E'
+PROTOCOL_SET_STEER_DECAY  = b'\x0F'
 
 PROTOCOL_PAD = b'\xFF\xFF\xFF\xFF'
 IEEE_ZERO = b'\x00\x00\x00\x00'
@@ -30,9 +32,17 @@ def get_cmd_bytestring(cmd_code, value=IEEE_ZERO):
                       PROTOCOL_PAD + value + PROTOCOL_PAD)
     return cmd_bytestring
 
-def lin(com, spd):
-    com.write(get_cmd_bytestring(PROTOCOL_SET_DRIVE_REF, spd))
+def lin(com, pos):
+    com.write(get_cmd_bytestring(PROTOCOL_SET_DRIVE_REF, pos))
     com.write(get_cmd_bytestring(PROTOCOL_UPDATE_REF))
+
+def ang(com, heading):
+    com.write(get_cmd_bytestring(PROTOCOL_SET_STEER_REF, heading))
+    com.write(get_cmd_bytestring(PROTOCOL_UPDATE_REF))
+
+def cmd_help(com):
+    print("Danh sách các lệnh:")
+    print('\n'.join(command_map.keys()))
 
 command_map = dict(
     stop=PROTOCOL_STOP,
@@ -48,7 +58,11 @@ command_map = dict(
     set_wheel_d=PROTOCOL_SET_WHEEL_D,
     set_encoder_ppr=PROTOCOL_SET_ENCODER_PPR,
     get_sample_rate=PROTOCOL_GET_SAMPLE_RATE,
+    set_drive_decay=PROTOCOL_SET_DRIVE_DECAY,
+    set_steer_decay=PROTOCOL_SET_STEER_DECAY,
     lin=lin,
+    ang=ang,
+    help=cmd_help,
 )
 
 def execute_command(com, cmd, args):
