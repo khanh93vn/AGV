@@ -20,35 +20,38 @@ void pid_init(pid_t *pid)
  * Nhận tín hiệu hồi tiếp, thực hiện cập nhật
  * và gửi tín hiệu ngõ ra.
  */
-float pid_step(pid_t *pid, float i)
+int32_t pid_step(pid_t *pid, int16_t i)
 {
-  float e = pid->ref - i;
-  return pid_stp_from_error(pid, e);
+  return pid_stp_from_error(pid, pid->ref - i);
 }
 
 /**
  * Nhận giá trị sai số, thực hiện cập nhật
  * và gửi tín hiệu ngõ ra.
  */
-float pid_stp_from_error(pid_t *pid, float e)
+int32_t pid_stp_from_error(pid_t *pid, int16_t e)
 {
-  float de, u;
+  int16_t de;
+  int32_t u;
   
   // Tính thay đổi của e so với chu kỳ trước
   de = (e - pid->pe);
 
   // Tính tích phân
-  pid->se = pid->se_decay*pid->se + (e + pid->pe)/2*dt;
-  //pid->se = pid->se + (e + pid->pe)/2*dt;
+  if ((e >= 0 && pid->pe < 0) ||
+      (e < 0 && pid->pe >= 0))
+  {
+    pid->se = 0;
+  } else pid->se += (e + pid->pe)>>1;
+  // TODO: thêm pid->se_decay*pid->se vào công thức
   
-  //pid->se += (e + pid->pe)/2;
-
   // Tính giá trị ngõ ra
-  u = pid->kp*e + pid->ki*pid->se + pid->kd*de/dt;
-  //u = pid->kp*e + pid->ki*pid->se + pid->kd*de;
+  u = ((uint32_t)pid->kp*e +
+       (uint32_t)pid->ki*pid->se +
+       (uint32_t)pid->kd*de);
 
   // e của chu kỳ này là pe của chu kỳ kế tiếp
   pid->pe = e;
 
-  return u;
+  return (u >> 8);
 }

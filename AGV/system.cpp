@@ -7,7 +7,7 @@
 
 // Các biến toàn cục của module ----------------------------------------------
 // Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
-volatile uint32_t sys_sample_cnt;
+volatile uint16_t sys_sample_cnt;
 
 // Biến đọc cập nhật encoder
 volatile int16_t encoder_pulse_cnt;
@@ -18,10 +18,19 @@ volatile int16_t encoder_pulse_cnt;
 volatile int16_t encoder_pos_dot;
 
 // Biến lưu vị trí encoder. Đơn vị: số xung encoder
-volatile int64_t encoder_position;
+volatile int16_t encoder_position;
 
-// Góc xoay đầu xe
-volatile float vehicle_heading;
+// Trạng thái tự định vị của xe
+volatile float sys_pose_x;      // Tọa độ x
+volatile float sys_pose_y;      // Tọa độ y
+volatile float sys_pose_a = 0;  // Hướng đầu xe
+
+// Vector chỉ hướng đầu xe
+volatile float sys_pose_vec[2] = {1.0, 0.0};
+volatile float prev_pose_vec[2];
+
+// Độ dài ước tính di chuyển được mỗi chu kỳ ngắt
+volatile float sys_meters_per_dt;
 
 // Các chương trình con --------------------------------------------------------
 /**
@@ -111,7 +120,7 @@ void sys_halt()
  */
 float sys_get_spd()
 {
-  return PI*settings.wheel_diameter*encoder_pos_dot/settings.encoder_ppr/dt;
+  return sys_meters_per_dt/dt;
 }
 
 /**
@@ -121,15 +130,6 @@ float sys_get_spd()
 float sys_get_wheel_angle()
 {
   return TWO_PI*encoder_position/settings.encoder_ppr;
-}
-
-/**
- * Lấy dữ liệu về góc xoay hiện tại.
- * Đơn vị ngõ ra: radians.
- */
-float sys_get_heading()
-{
-  return vehicle_heading;
 }
 // Các chương trình ngắt ------------------------------------------------------
 /**
@@ -167,29 +167,42 @@ ISR(TIMER2_COMPA_vect)
 
   // cho phép ngắt chồng (để cập nhật encoder)
   sei();
+  
+  // Cập nhật vị trí tuyệt đối encoder
+  encoder_position += encoder_pos_dot;
+  if (encoder_position < 0) {
+    encoder_position += settings.encoder_ppr;
+    drive_pid.ref += settings.encoder_ppr;
+  } else if (encoder_position > settings.encoder_ppr) {
+    encoder_position -= settings.encoder_ppr;
+    drive_pid.ref -= settings.encoder_ppr;
+  }
 
-  // cập nhật các điểm tham chiếu từ module protocol
+  // II) Chạy bộ điều khiển PID bánh dẫn động
+  drive_step(encoder_position);
+
+  // III) Cập nhật các điểm tham chiếu từ module protocol
   if (protocol_flags & PROTOCOL_FLAG_UPDATE_REF) {
-    drive_pid.ref = protocol_drive_ref_buff;
+    drive_pid.ref += protocol_drive_ref_buff;
     steer_pid.ref = protocol_steer_ref_buff;
     protocol_flags &= ~PROTOCOL_FLAG_UPDATE_REF;
   }
 
-  // Cập nhật vị trí tuyệt đối encoder
-  encoder_position += encoder_pos_dot;
+  // IV) Cập nhật góc đầu xe từ cảm biến quán tính
+  imu_get_angle(&sys_pose_a, sys_pose_vec);
 
-  // II) Chạy bộ điều khiển PID bánh dẫn động
-  drive_step();
-
-  // III) Cập nhật góc đầu xe từ cảm biến quán tính
-  vehicle_heading = imu_get_angle();
-
-  // IV) Chạy bộ điều khiển PID góc lái
+  // V) Chạy bộ điều khiển PID góc lái
   steer_step();
 
-  // V) Gửi dữ liệu trạng thái qua UART, dữ liệu bao gồm
-  // các thông số thay đổi vị trí và góc lái so với chu kỳ trước
-  //dprintln((int32_t)encoder_position);
+  // VI) Tính tọa độ của xe trong hệ quy chiếu hiện tại
+  sys_meters_per_dt = PI*settings.wheel_diameter*encoder_pos_dot/settings.encoder_ppr;
+  sys_pose_x += sys_meters_per_dt*sys_pose_vec[0];
+  sys_pose_y += sys_meters_per_dt*sys_pose_vec[1];
+
+  //prev_pose_vec[0] = sys_pose_vec[0];
+  //prev_pose_vec[1] = sys_pose_vec[1];
+  
+  //dprintln(vehicle_heading);
   
   if (protocol_flags & PROTOCOL_FLAG_SAMPLE_RATE) {
     sys_sample_cnt++;

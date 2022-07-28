@@ -31,6 +31,7 @@
 #endif
 
 // nhập các module
+#include "fixed_point_math.h"
 #include "cpu_map.h"    // Khai báo chân GPIO và các thanh ghi
 #include "defaults.h"   // Các thông số mặc định và hằng số
 #include "settings.h"   // Quản lý thông số cài đặt

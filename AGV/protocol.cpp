@@ -6,7 +6,7 @@
 // Các mã lệnh điều khiển
 #define PROTOCOL_STOP             0x01  // Dừng
 #define PROTOCOL_UPDATE_REF       0x02  // Cập nhật tham chiếu
-#define PROTOCOL_SET_DRIVE_REF    0x03  // Set tham chiếu dẫn động (tốc độ tiến-lùi)
+#define PROTOCOL_ADD_DRIVE_REF    0x03  // Tăng/giảm tham chiếu dẫn động theo dữ liệu gửi (vị trí bánh xe)
 #define PROTOCOL_SET_DRIVE_KP     0x04  // Set Kp dẫn động
 #define PROTOCOL_SET_DRIVE_KI     0x05  // Set Ki dẫn động
 #define PROTOCOL_SET_DRIVE_KD     0x06  // Set Kd dẫn động
@@ -19,6 +19,9 @@
 #define PROTOCOL_GET_SAMPLE_RATE  0x0D  // Test tần số lấy mẫu
 #define PROTOCOL_SET_DRIVE_DECAY  0x0E  // Set hệ số tắt dần pid dẫn động
 #define PROTOCOL_SET_STEER_DECAY  0x0F  // Set hệ số tắt dần pid lái
+
+//
+#define PROTOCOL_GET_POSE         0x81  // Trả về trạng thái xe
 
 #define PROTOCOL_PAD              0xFFFFFFFF
 
@@ -63,14 +66,15 @@ void protocol_loop()
   dprintln("Bắt đầu nhận truyền thông");
   protocol_flags |= PROTOCOL_FLAG_RECEIVING;
   while (protocol_flags & PROTOCOL_FLAG_RECEIVING)
-  {
-    /*
-    float spd = sys_get_spd();
-    if (spd != 0) {
-      dprint(sys_get_heading());
+  {/*
+    static uint32_t cnt = 0;
+    if (cnt++ > 200000) {
+      cnt = 0;
+      dprint(sys_pose_a);
       dprint(' ');
       dprintln(sys_get_wheel_angle());
-    }*/
+    }
+    */
     if (Serial.available() >= 17) {
       // I) Khai báo biến
       uint8_t buffer[18];   // Vùng nhớ chứa chuỗi truyền
@@ -127,9 +131,9 @@ void protocol_loop()
         protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
         dprintln("Đã cập nhật tham chiếu");
         break;
-      case PROTOCOL_SET_DRIVE_REF:  // Đổi tham chiếu dẫn động
+      case PROTOCOL_ADD_DRIVE_REF:  // Đổi tham chiếu dẫn động (tăng/giảm)
         protocol_drive_ref_buff = *ctrl_val_ptr;
-        dprint("Tham chiếu dẫn động mới: ");
+        dprint("Tăng/giảm tham chiếu dẫn động: ");
         dprint(protocol_drive_ref_buff);
         dprintln(" radians");
         break;
@@ -200,6 +204,15 @@ void protocol_loop()
       case PROTOCOL_SET_STEER_DECAY:  // set hệ số tắt dần
         steer_pid.se_decay = *ctrl_val_ptr;
         break;
+      case PROTOCOL_GET_POSE:         // Lấy dữ liệu tự định vị của xe
+        dprint("(x = ");
+        dprint(sys_pose_x);
+        dprint(", y = ");
+        dprint(sys_pose_y);
+        dprint(", a = ");
+        dprint(sys_pose_a);
+        dprintln(")");
+        break;
       default:  // có lỗi xảy ra, thoát
 protocol_error:
         dprintln("Có lỗi xảy ra");
@@ -236,7 +249,7 @@ protocol_error:
 void protocol_stop()
 {
   protocol_drive_ref_buff = sys_get_wheel_angle();
-  protocol_steer_ref_buff = sys_get_heading();
+  protocol_steer_ref_buff = sys_pose_a;
   drive_pid.se = 0;
   steer_pid.se = 0;
 }

@@ -25,18 +25,16 @@ void drive_init()
 /**
  * Cập nhật bộ điều khiển và xuất tín hiệu điều khiển.
  */
-void drive_step()
+void drive_step(int16_t encoder_position)
 {
-  float wheel_angle, duty_cycle;
+  int32_t duty_cycle;
   uint8_t direction_bit;
 
-  // I) Cập nhật tốc độ từ hệ thống đọc encoder
-  wheel_angle = sys_get_wheel_angle();
+  // I) Cập nhật bộ điều khiển PID
+  duty_cycle = pid_step(&drive_pid, encoder_position);
+  
 
-  // II) Cập nhật bộ điều khiển PID
-  duty_cycle = pid_step(&drive_pid, wheel_angle);
-
-  // III) Điều khiển động cơ
+  // II) Điều khiển động cơ
 
   // Kiểm tra dấu của ngõ ra
   if (duty_cycle < 0) {
@@ -49,9 +47,12 @@ void drive_step()
   digitalWrite(IO_DRIVE_H1, direction_bit);
   digitalWrite(IO_DRIVE_H2, !direction_bit);
   
-  // Ngõ ra phải trong đoạn [0.0, 1.0]
-  if (duty_cycle > 1.0) duty_cycle = 1.0;
+  // Ngõ ra phải trong đoạn [0, ]
+  if (duty_cycle > 255) duty_cycle = 255;
+
+  // Không đủ để thắng ma sát
+  if (duty_cycle < 70) duty_cycle = 0;
   
   // Chỉnh tỷ lệ áp ngõ ra
-  analogWrite(IO_DRIVE_P, (uint8_t)(duty_cycle*255));
+  analogWrite(IO_DRIVE_P, (uint8_t)duty_cycle);
 }

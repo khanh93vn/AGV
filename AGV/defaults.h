@@ -13,13 +13,13 @@
 #define WHEEL_DIAMETER  0.05
 
 // Thông số PID mặc định
-#define SE_DECAY        0.999
-#define DRIVE_KP        5.0
+#define SE_DECAY        0.999     // Hệ số tắt dần
+#define DRIVE_KP        2.5
 #define DRIVE_KI        0.1
 #define DRIVE_KD        0.5
-#define STEER_KP        20.0
-#define STEER_KI        0.2
-#define STEER_KD        1.0
+#define STEER_KP        5.0
+#define STEER_KI        0.1
+#define STEER_KD        0.5
 
 // Các giá trị yêu cầu thận trọng khi thay đổi -------------------------------
 

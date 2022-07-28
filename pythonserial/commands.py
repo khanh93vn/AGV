@@ -7,6 +7,7 @@ Chứa các lệnh gửi xuống xe.
 """
 
 from struct import pack
+from math import pi
 
 PROTOCOL_STOP             = b'\x01'
 PROTOCOL_UPDATE_REF       = b'\x02'
@@ -24,20 +25,25 @@ PROTOCOL_GET_SAMPLE_RATE  = b'\x0D'
 PROTOCOL_SET_DRIVE_DECAY  = b'\x0E'
 PROTOCOL_SET_STEER_DECAY  = b'\x0F'
 
+PROTOCOL_GET_POSE         = b'\x81'
+
 PROTOCOL_PAD = b'\xFF\xFF\xFF\xFF'
 IEEE_ZERO = b'\x00\x00\x00\x00'
 
-def get_cmd_bytestring(cmd_code, value=IEEE_ZERO):
+def get_cmd_bytestring(cmd_code, value=0):
     cmd_bytestring = (PROTOCOL_PAD + cmd_code +
-                      PROTOCOL_PAD + value + PROTOCOL_PAD)
+                      PROTOCOL_PAD + pack('f', value) +
+                      PROTOCOL_PAD)
     return cmd_bytestring
 
 def lin(com, pos):
-    com.write(get_cmd_bytestring(PROTOCOL_SET_DRIVE_REF, pos))
+    pos_rad = pos*pi/180
+    com.write(get_cmd_bytestring(PROTOCOL_SET_DRIVE_REF, pos_rad))
     com.write(get_cmd_bytestring(PROTOCOL_UPDATE_REF))
 
 def ang(com, heading):
-    com.write(get_cmd_bytestring(PROTOCOL_SET_STEER_REF, heading))
+    heading_rad = heading*pi/180
+    com.write(get_cmd_bytestring(PROTOCOL_SET_STEER_REF, heading_rad))
     com.write(get_cmd_bytestring(PROTOCOL_UPDATE_REF))
 
 def cmd_help(com):
@@ -46,27 +52,28 @@ def cmd_help(com):
 
 command_map = dict(
     stop=PROTOCOL_STOP,
-    update_ref=PROTOCOL_UPDATE_REF,
-    set_drive_ref=PROTOCOL_SET_DRIVE_REF,
-    set_drive_kp=PROTOCOL_SET_DRIVE_KP,
-    set_drive_ki=PROTOCOL_SET_DRIVE_KI,
-    set_drive_kd=PROTOCOL_SET_DRIVE_KD,
-    set_steer_ref=PROTOCOL_SET_STEER_REF,
-    set_steer_kp=PROTOCOL_SET_STEER_KP,
-    set_steer_ki=PROTOCOL_SET_STEER_KI,
-    set_steer_kd=PROTOCOL_SET_STEER_KD,
-    set_wheel_d=PROTOCOL_SET_WHEEL_D,
-    set_encoder_ppr=PROTOCOL_SET_ENCODER_PPR,
-    get_sample_rate=PROTOCOL_GET_SAMPLE_RATE,
-    set_drive_decay=PROTOCOL_SET_DRIVE_DECAY,
-    set_steer_decay=PROTOCOL_SET_STEER_DECAY,
+    ur=PROTOCOL_UPDATE_REF,
+    sdrf=PROTOCOL_SET_DRIVE_REF,
+    sdkp=PROTOCOL_SET_DRIVE_KP,
+    sdki=PROTOCOL_SET_DRIVE_KI,
+    sdkd=PROTOCOL_SET_DRIVE_KD,
+    ssrf=PROTOCOL_SET_STEER_REF,
+    sskp=PROTOCOL_SET_STEER_KP,
+    sski=PROTOCOL_SET_STEER_KI,
+    sskd=PROTOCOL_SET_STEER_KD,
+    swd=PROTOCOL_SET_WHEEL_D,
+    seppr=PROTOCOL_SET_ENCODER_PPR,
+    gsr=PROTOCOL_GET_SAMPLE_RATE,
+    sddc=PROTOCOL_SET_DRIVE_DECAY,
+    ssdc=PROTOCOL_SET_STEER_DECAY,
+    gp=PROTOCOL_GET_POSE,
     lin=lin,
     ang=ang,
     help=cmd_help,
 )
 
 def execute_command(com, cmd, args):
-    args = [pack('f', float(arg)) for arg in args]
+    args = [float(arg) for arg in args]
     cmd_code = command_map.get(cmd)
     if isinstance(cmd_code, (bytes, bytearray)):
         com.write(get_cmd_bytestring(cmd_code, *args))

@@ -6,8 +6,8 @@
 // Cấu trúc lưu các con trỏ tới các thông số
 // cài đặt nằm ngoài module
 struct {
-  float *drive_pid_params;
-  float *steer_pid_params;
+  int16_t *drive_pid_params;
+  int16_t *steer_pid_params;
 } ext_settings;
 
 // Các biến toàn cục ----------------------------------------------------------
@@ -40,16 +40,16 @@ void settings_init()
   settings.encoder_ppr = ENCODER_PPR;
 
   // Thông số PID bánh dẫn động
-  ext_settings.drive_pid_params[0] = DRIVE_KP;
-  ext_settings.drive_pid_params[1] = DRIVE_KI;
-  ext_settings.drive_pid_params[2] = DRIVE_KD;
-  ext_settings.drive_pid_params[3] = SE_DECAY;
+  ext_settings.drive_pid_params[0] = Q8_8CONST(DRIVE_KP);
+  ext_settings.drive_pid_params[1] = Q8_8CONST(DRIVE_KI*dt);
+  ext_settings.drive_pid_params[2] = Q8_8CONST(DRIVE_KD/dt);
+  ext_settings.drive_pid_params[3] = (uint16_t)(SE_DECAY*65535);
 
   // Thông số PID hệ thống lái
-  ext_settings.steer_pid_params[0] = STEER_KP;
-  ext_settings.steer_pid_params[1] = STEER_KI;
-  ext_settings.steer_pid_params[2] = STEER_KD;
-  ext_settings.steer_pid_params[3] = SE_DECAY;
+  ext_settings.steer_pid_params[0] = Q8_8CONST(STEER_KP);
+  ext_settings.steer_pid_params[1] = Q8_8CONST(STEER_KI*dt);
+  ext_settings.steer_pid_params[2] = Q8_8CONST(STEER_KD/dt);
+  ext_settings.steer_pid_params[3] = (uint16_t)(SE_DECAY*65535);
 
   // TODO: thêm phần load cài đặt từ EEPROM
 }

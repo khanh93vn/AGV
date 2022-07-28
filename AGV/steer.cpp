@@ -20,8 +20,6 @@ void steer_init()
 
   // II) Reset bộ PID
   pid_init(&steer_pid);
-
-  steer_pid.ref = PI;
 }
 
 /**
@@ -29,19 +27,22 @@ void steer_init()
  */
 void steer_step()
 {
-  float heading, duty_cycle, heading_error;
+  float spd, heading, duty_cycle, heading_error;
   uint8_t direction_bit;
 
-  // I) Tính sai số
-  heading = sys_get_heading();
+  // I) Lấy dữ liệu hướng xe và tốc độ quay bánh xe
+  spd = sys_get_spd();
+  heading = sys_pose_a;
+
+  // II) Tính sai số
   heading_error = steer_pid.ref - heading;
   while (heading_error > PI) heading_error -= TWO_PI;
   while (heading_error < -PI) heading_error += TWO_PI;
 
-  // II) Cập nhật bộ điều khiển PID
-  duty_cycle = pid_stp_from_error(&steer_pid, heading_error);
+  // III) Cập nhật bộ điều khiển PID
+  duty_cycle = spd*pid_stp_from_error(&steer_pid, heading_error);
 
-  // III) Điều khiển động cơ
+  // IV) Điều khiển động cơ
 
   // Kiểm tra dấu của ngõ ra
   if (duty_cycle < 0) {

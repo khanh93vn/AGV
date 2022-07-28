@@ -6,10 +6,13 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-// Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
-extern volatile uint32_t sys_sample_cnt;
+// Trạng thái tự định vị của xe
+extern volatile float sys_pose_x;   // Tọa độ x
+extern volatile float sys_pose_y;   // Tọa độ y
+extern volatile float sys_pose_a;   // Hướng đầu xe
 
-// Biến xác định xe đã dừng hẳn
+// Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
+extern volatile uint16_t sys_sample_cnt;
 
 // Khởi động hệ thống
 void sys_init();
@@ -22,8 +25,5 @@ float sys_get_spd();
 
 // Lấy dữ liệu vị trí bánh xe (radians)
 float sys_get_wheel_angle();
-
-// Lấy dữ liệu về góc quay hiện tại (radians)
-float sys_get_heading();
 
 #endif

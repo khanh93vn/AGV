@@ -11,6 +11,6 @@ extern volatile pid_t drive_pid;
 void drive_init();
 
 // Cập nhật bộ điều khiển
-void drive_step();
+void drive_step(int16_t encoder_position);
 
 #endif

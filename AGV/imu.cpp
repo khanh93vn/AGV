@@ -73,12 +73,13 @@ void imu_init()
 /**
  * Lấy góc xoay của xe (góc xoay quanh trục Z).
  */
-float imu_get_angle()
+float imu_get_angle(float *angle, float *vec)
 {
-  float angle = 0;    // Biến giữ giá trị góc xoay
   int16_t q[4];       // Biến giữ giá trị quarternion
+  int32_t u, v;       // Biến chứa vector chỉ góc xoay
+  float d, fu, fv;
   if (!dmp_ready || !mpu.dmpGetCurrentFIFOPacket(fifo_buffer))
-    return angle;
+    return;
 
   // Dữ liệu quarternion (integer 16 bit) được chứa trong các
   // byte (0, 1), (4, 5), (8, 9), (12, 13)
@@ -91,9 +92,17 @@ float imu_get_angle()
   // Công thức đối với quarternion kiểu float:
   //   angle = atan2(2.0*(q.z*q.w + q.x*q.y),
   //                 2.0*(q.w*q.w + q.x*q.x) - 1.0);
-  angle = atan2(q[3]*q[0] + q[1]*q[2],
-                q[0]*q[0] + q[1]*q[1] - 134217728);
+  u = (int32_t)q[3]*q[0] + (int32_t)q[1]*q[2];
+  v = (int32_t)q[0]*q[0] + (int32_t)q[1]*q[1] - 134217728;
+  *angle = atan2(u, v);
 
+  // Tính vector chỉ hướng
+  fu = (float)u;
+  fv = (float)v;
+  d = sqrt(fu*fu + fv*fv);
+  *vec = fu/d;
+  *(vec+1) = fv/d;
+  
   // Hiển thị
   //dprint("Quarternion: ");
   //dprint(q[0]); dprint(' ');
@@ -101,6 +110,4 @@ float imu_get_angle()
   //dprint(q[2]); dprint(' ');
   //dprintln(q[3]);
   //dprint("Angle: "); dprintln(angle*180.0/PI);
-  
-  return angle;
 }
