@@ -1,11 +1,21 @@
 // File: system.cpp
 // Quản lý hệ thống:
-// - Định thời cho việc lấy mẫu và điều khiển.
+// - Định thời cho việc lấy mẫu và điều khiển PID.
 // - Ngắt đọc encoder.
 
 #include "agv.h"
 
 // Các biến toàn cục của module ----------------------------------------------
+// Dữ liệu điều khiển PID của bánh dẫn động
+volatile uint16_t sys_dr_ref, dr_pe, dr_se;
+
+// Dữ liệu điều khiển PID của cơ cấu lái
+volatile Q3_12 sys_st_ref, st_pe, st_se;
+
+// Dữ liệu tự định vị của xe
+volatile sys_pose_t sys_pose;
+volatile frame_t frame;
+
 // Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
 volatile uint16_t sys_sample_cnt;
 
@@ -20,18 +30,8 @@ volatile int16_t encoder_pos_dot;
 // Biến lưu vị trí encoder. Đơn vị: số xung encoder
 volatile int16_t encoder_position;
 
-// Trạng thái tự định vị của xe
-volatile float sys_pose_x;      // Tọa độ x
-volatile float sys_pose_y;      // Tọa độ y
-volatile float sys_pose_a = 0;  // Hướng đầu xe
-
-// Vector chỉ hướng đầu xe
-volatile float sys_pose_vec[2] = {1.0, 0.0};
-volatile float prev_pose_vec[2];
-
 // Độ dài ước tính di chuyển được mỗi chu kỳ ngắt
-volatile float sys_meters_per_dt;
-
+volatile Q3_28 meters_per_dt;
 // Các chương trình con --------------------------------------------------------
 /**
  * Khởi động hệ thống, thiết lập chương trình
@@ -39,23 +39,41 @@ volatile float sys_meters_per_dt;
  */
 void sys_init()
 {
-  // I) Thiết lập hệ đọc encoder
-  
+  // I) Cài đặt các bộ PID
+  // PID bánh dẫn động
+  pinMode(IO_DRIVE_P, OUTPUT);
+  pinMode(IO_DRIVE_H1, OUTPUT);
+  pinMode(IO_DRIVE_H2, OUTPUT);
+  sys_dr_ref = 0;
+  dr_pe = 0;
+  dr_se = 0;
+
+
+  // PID cơ cấu lái
+  pinMode(IO_STEER_P, OUTPUT);
+  pinMode(IO_STEER_H1, OUTPUT);
+  pinMode(IO_STEER_H2, OUTPUT);
+  sys_st_ref = 0;
+  st_pe = 0;
+  st_se = 0;
+
+  // II) Thiết lập hệ đọc encoder
+
   // Thiết lập chế độ input cho chân đọc encoder
   pinMode(IO_ENC0_A, INPUT_PULLUP);
   pinMode(IO_ENC0_B, INPUT_PULLUP);
-  
+
   // Thiết lập ngắt khi chân IO_ENC0_A thay đổi trạng thái
   *digitalPinToPCMSK(IO_ENC0_A) |= bit(digitalPinToPCMSKbit(IO_ENC0_A));
   PCIFR  |= bit(digitalPinToPCICRbit(IO_ENC0_A)); // xóa các cờ ngắt hiện tại
   PCICR  |= bit(digitalPinToPCICRbit(IO_ENC0_A)); // cho phép ngắt
-  
+
   // Reset các biến đọc encoder
   encoder_pulse_cnt = 0;
   encoder_pos_dot = 0;
   encoder_position = 0;
 
-  // II) Thiết lập ngắt bộ định thời (Timer2A)
+  // III) Thiết lập ngắt bộ định thời (Timer2A)
   // Xóa cờ chọn clock đầu vào và bộ chia (CS22:0 = 000)
   TCCR2B &= ~(_BV(CS22) | _BV(CS21) | _BV(CS20));
 
@@ -89,9 +107,7 @@ void sys_init()
   // Có thể tham khảo giá trị bộ chia từ datasheet của vđk
   // Ví dụ bộ chia 1024 thì CS22:0 = 111
   TCCR2B &= ~(_BV(CS22) | _BV(CS21) | _BV(CS20)); // reset CS22:0 về 000
-  //TCCR2B |= CLK_SEL;
-  //TCCR2B |= _BV(CS21);
-  TCCR2B |= _BV(CS22) | _BV(CS21) | _BV(CS20);
+  TCCR2B |= CLK_SEL;
 }
 
 /**
@@ -118,18 +134,9 @@ void sys_halt()
  * Lấy dữ liệu về tốc độ hiện tại.
  * Đơn vị ngõ ra: m/s.
  */
-float sys_get_spd()
+Q17_14 sys_get_spd()
 {
-  return sys_meters_per_dt/dt;
-}
-
-/**
- * Lấy dữ liệu về vị trí bánh xe.
- * Đơn vị ngõ ra: radians.
- */
-float sys_get_wheel_angle()
-{
-  return TWO_PI*encoder_position/settings.encoder_ppr;
+  return Q3_28_TO_Q17_14(meters_per_dt)*UPDATE_RATE;
 }
 // Các chương trình ngắt ------------------------------------------------------
 /**
@@ -167,43 +174,123 @@ ISR(TIMER2_COMPA_vect)
 
   // cho phép ngắt chồng (để cập nhật encoder)
   sei();
-  
+
   // Cập nhật vị trí tuyệt đối encoder
   encoder_position += encoder_pos_dot;
-  if (encoder_position < 0) {
-    encoder_position += settings.encoder_ppr;
-    drive_pid.ref += settings.encoder_ppr;
-  } else if (encoder_position > settings.encoder_ppr) {
-    encoder_position -= settings.encoder_ppr;
-    drive_pid.ref -= settings.encoder_ppr;
-  }
 
-  // II) Chạy bộ điều khiển PID bánh dẫn động
-  drive_step(encoder_position);
+  int32_t duty_cycle;
+  uint8_t direction_bit;
+  int16_t dr_e, dr_de;
+  Q3_12 st_e, st_de;
+  // II) Chạy bộ điều khiển PID bánh dẫn động:
+  // u = kp.e + ki.∫edt + kd.de/dt
+  // Trường hợp lấy mẫu rời rạc:
+  // u = kp.e + ki.Σe.Δt + kd.de/Δt
+  // Khi Δt là hằng số, đặt Δt ra:
+  // u = kp.e + (ki.Δt).Σe + (kd/Δt).de
+  // Cho ki = ki.Δt và kd = kd/Δt, sẽ rút
+  // được một phép nhân và một phép chia
+  // trong thuật toán (được tính sẵn
+  // trong module settings)
+  dr_e = sys_dr_ref - encoder_position; // Tính sai số
+  dr_de = encoder_pos_dot;              // Tính de
+  if ((dr_e>=0 && dr_pe<0) || (dr_e<0 && dr_pe>=0))
+    dr_se = 0;
+  else dr_se += dr_e;                   // Tính Σe
+  // TODO: thêm hệ số tắt dần vào công thức
 
-  // III) Cập nhật các điểm tham chiếu từ module protocol
+  // Tính giá trị ngõ ra:
+  duty_cycle = ((int32_t)(settings.dr_kp)*dr_e +
+                (int32_t)(settings.dr_ki)*dr_se +
+                (int32_t)(settings.dr_kd)*dr_de);
+
+  // e của chu kỳ này là pe của chu kỳ kế tiếp
+  dr_pe = dr_e;
+
+  // III) Điều khiển động cơ
+  if (duty_cycle < 0) {                      // xác định chiều
+    direction_bit = HIGH;
+    duty_cycle = -duty_cycle;
+  } else direction_bit = LOW;
+  digitalWrite(IO_DRIVE_H1, direction_bit);  // Chỉnh chiều quay
+  digitalWrite(IO_DRIVE_H2, !direction_bit);
+  duty_cycle &= 255;                         // Ngõ ra phải trong đoạn [0, 255]
+  if (duty_cycle < 70) duty_cycle = 0;       // Không đủ để thắng ma sát
+  analogWrite(IO_DRIVE_P, (uint8_t)duty_cycle);
+
+  // IV) Cập nhật góc đầu xe từ cảm biến quán tính
+  imu_update();
+  // TODO: tính sys_pose.a bằng hàm arctan
+
+  // V) Chạy bộ điều khiển PID góc lái
+  st_e = sys_st_ref - Q7_24_TO_Q3_12(sys_pose.a);   // Tính sai số
+  while (st_e > Q3_12PI)
+    st_e -= Q3_12TWO_PI;     // Đảm bảo e < pi
+  while (st_e < -Q3_12PI)
+    st_e += Q3_12TWO_PI;     // Đảm bảo e > -pi
+  st_de = st_e - st_pe;             // Tính de
+  if ((st_e>=0 && st_pe<0) || (st_e<0 && st_pe>=0))
+    st_se = 0;
+  else st_se += st_e;               // Tính Σe
+  // TODO: thêm hệ số tắt dần vào công thức
+
+  // Tính giá trị ngõ ra:
+  duty_cycle = ((int32_t)(settings.st_kp)*st_e +
+                (int32_t)(settings.st_ki)*st_se +
+                (int32_t)(settings.st_kd)*st_de) >> 12;
+
+  // e của chu kỳ này là pe của chu kỳ kế tiếp
+  st_pe = st_e;
+
+  // VI) Điều khiển động cơ lái
+  if (duty_cycle < 0) {                      // Kiểm tra dấu của ngõ ra
+    direction_bit = HIGH;
+    duty_cycle = -duty_cycle;
+  } else direction_bit = LOW;
+  digitalWrite(IO_STEER_H1, direction_bit);  // Chỉnh chiều quay
+  digitalWrite(IO_STEER_H2, !direction_bit);
+  duty_cycle &= 255;                         // Ngõ ra phải trong đoạn [0, 255]
+  analogWrite(IO_STEER_P, (uint8_t)duty_cycle);
+
+  // VII) Tính tọa độ của xe trong hệ quy chiếu hiện tại
+
+  // Tính quãng đường đi được (m)
+  // trong khoảng thời gian giữa
+  // 2 lần lấy mẫu
+  meters_per_dt = encoder_pos_dot*settings.k_pc2m;
+
+  // Cập nhật tọa độ xe (kiểu Q3_28)
+  // quãng chênh lệch tính được bằng
+  // phép nhân giữa quãng đường đi
+  // với sin hoặc cos góc hướng đầu
+  // xe (kiểu Q3_28).
+  sys_pose.x += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.v[0]));
+  sys_pose.y += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.v[1]));
+
+  // Cập nhật pv
+  sys_pose.pv[0] = sys_pose.v[0];
+  sys_pose.pv[1] = sys_pose.v[1];
+
+  // VIII) Cập nhật các điểm tham chiếu từ module protocol
   if (protocol_flags & PROTOCOL_FLAG_UPDATE_REF) {
-    drive_pid.ref += protocol_drive_ref_buff;
-    steer_pid.ref = protocol_steer_ref_buff;
+    sys_dr_ref = protocol_drive_ref_buff;
+    sys_st_ref = protocol_steer_ref_buff;
     protocol_flags &= ~PROTOCOL_FLAG_UPDATE_REF;
   }
 
-  // IV) Cập nhật góc đầu xe từ cảm biến quán tính
-  imu_get_angle(&sys_pose_a, sys_pose_vec);
+  // IX) Cập nhật để đảm bảo các biến
+  // ở trong khoảng nhất định
+  if (encoder_position < 0) {
+    encoder_position += settings.encoder_ppr;
+    sys_dr_ref += settings.encoder_ppr;
+  } else if (encoder_position > settings.encoder_ppr) {
+    encoder_position -= settings.encoder_ppr;
+    sys_st_ref -= settings.encoder_ppr;
+  }
+  // TODO: thêm cập nhật sys_pose và hệ quy chiếu
 
-  // V) Chạy bộ điều khiển PID góc lái
-  steer_step();
-
-  // VI) Tính tọa độ của xe trong hệ quy chiếu hiện tại
-  sys_meters_per_dt = PI*settings.wheel_diameter*encoder_pos_dot/settings.encoder_ppr;
-  sys_pose_x += sys_meters_per_dt*sys_pose_vec[0];
-  sys_pose_y += sys_meters_per_dt*sys_pose_vec[1];
-
-  //prev_pose_vec[0] = sys_pose_vec[0];
-  //prev_pose_vec[1] = sys_pose_vec[1];
-  
   //dprintln(vehicle_heading);
-  
+
   if (protocol_flags & PROTOCOL_FLAG_SAMPLE_RATE) {
     sys_sample_cnt++;
   }

@@ -30,12 +30,6 @@ int main()
   // II) Vòng lặp chính
   while (1)
   {
-    // Khởi động các bộ điều khiển
-    drive_init();
-    dprintln("Hoàn tất khởi động module drive");
-    steer_init();
-    dprintln("Hoàn tất khởi động module steer");
-
     // Khởi động các hệ thống ngắt
     sys_init();
     dprintln("Hoàn tất khởi động hệ thống");

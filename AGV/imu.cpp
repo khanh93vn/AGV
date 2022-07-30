@@ -72,42 +72,40 @@ void imu_init()
 
 /**
  * Lấy góc xoay của xe (góc xoay quanh trục Z).
+ * Dữ liệu thể hiện dưới dạng vector.
  */
-float imu_get_angle(float *angle, float *vec)
+uint8_t imu_update()
 {
-  int16_t q[4];       // Biến giữ giá trị quarternion
-  int32_t u, v;       // Biến chứa vector chỉ góc xoay
-  float d, fu, fv;
+  Q1_14 q[4];       // Biến giữ giá trị quarternion
   if (!dmp_ready || !mpu.dmpGetCurrentFIFOPacket(fifo_buffer))
-    return;
+    return 1;
 
   // Dữ liệu quarternion (integer 16 bit) được chứa trong các
   // byte (0, 1), (4, 5), (8, 9), (12, 13)
-  q[0] = (int16_t)fifo_buffer[0] << 8 | fifo_buffer[1];
-  q[1] = (int16_t)fifo_buffer[4] << 8 | fifo_buffer[5];
-  q[2] = (int16_t)fifo_buffer[8] << 8 | fifo_buffer[9];
-  q[3] = (int16_t)fifo_buffer[12] << 8 | fifo_buffer[13];
+//  q[0] = (Q1_14)fifo_buffer[0] << 8 | fifo_buffer[1];
+//  q[1] = (Q1_14)fifo_buffer[4] << 8 | fifo_buffer[5];
+//  q[2] = (Q1_14)fifo_buffer[8] << 8 | fifo_buffer[9];
+//  q[3] = (Q1_14)fifo_buffer[12] << 8 | fifo_buffer[13];
+  q[0] = *((int16_t*)fifo_buffer);
+  q[1] = *((int16_t*)(fifo_buffer+4));
+  q[2] = *((int16_t*)(fifo_buffer+8));
+  q[3] = *((int16_t*)(fifo_buffer+12));
 
   // Tính hướng (góc xoay theo trục Z).
   // Công thức đối với quarternion kiểu float:
-  //   angle = atan2(2.0*(q.z*q.w + q.x*q.y),
-  //                 2.0*(q.w*q.w + q.x*q.x) - 1.0);
-  u = (int32_t)q[3]*q[0] + (int32_t)q[1]*q[2];
-  v = (int32_t)q[0]*q[0] + (int32_t)q[1]*q[1] - 134217728;
-  *angle = atan2(u, v);
+  //   angle = atan2(2.0*(z*w + x*y),
+  //                 2.0*(w*w + x*x) - 1.0);
+  sys_pose.v[0] = ((Q3_28)q[3]*q[0] + (Q3_28)q[1]*q[2])<<1;
+  sys_pose.v[1] = ((((Q3_28)q[0]*q[0] + (Q3_28)q[1]*q[1])<<1) -
+                     Q3_28ONE);
 
-  // Tính vector chỉ hướng
-  fu = (float)u;
-  fv = (float)v;
-  d = sqrt(fu*fu + fv*fv);
-  *vec = fu/d;
-  *(vec+1) = fv/d;
-  
   // Hiển thị
-  //dprint("Quarternion: ");
-  //dprint(q[0]); dprint(' ');
-  //dprint(q[1]); dprint(' ');
-  //dprint(q[2]); dprint(' ');
-  //dprintln(q[3]);
+  dprint("Quarternion: ");
+  dprint(q[0]); dprint(' ');
+  dprint(q[1]); dprint(' ');
+  dprint(q[2]); dprint(' ');
+  dprintln(q[3]);
   //dprint("Angle: "); dprintln(angle*180.0/PI);
+
+  return 0;
 }

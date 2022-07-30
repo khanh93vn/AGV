@@ -3,32 +3,47 @@
 
 #include "agv.h"
 
-// Các mã lệnh điều khiển
-#define PROTOCOL_STOP             0x01  // Dừng
-#define PROTOCOL_UPDATE_REF       0x02  // Cập nhật tham chiếu
-#define PROTOCOL_ADD_DRIVE_REF    0x03  // Tăng/giảm tham chiếu dẫn động theo dữ liệu gửi (vị trí bánh xe)
-#define PROTOCOL_SET_DRIVE_KP     0x04  // Set Kp dẫn động
-#define PROTOCOL_SET_DRIVE_KI     0x05  // Set Ki dẫn động
-#define PROTOCOL_SET_DRIVE_KD     0x06  // Set Kd dẫn động
-#define PROTOCOL_SET_STEER_REF    0x07  // Set tham chiếu góc lái
-#define PROTOCOL_SET_STEER_KP     0x08  // Set Kp lái
-#define PROTOCOL_SET_STEER_KI     0x09  // Set Ki lái
-#define PROTOCOL_SET_STEER_KD     0x0A  // Set Kd lái
-#define PROTOCOL_SET_WHEEL_D      0x0B  // Cập nhật đường kính bánh xe
-#define PROTOCOL_SET_ENCODER_PPR  0x0C  // Cập nhật số xung/vòng của encoder
-#define PROTOCOL_GET_SAMPLE_RATE  0x0D  // Test tần số lấy mẫu
-#define PROTOCOL_SET_DRIVE_DECAY  0x0E  // Set hệ số tắt dần pid dẫn động
-#define PROTOCOL_SET_STEER_DECAY  0x0F  // Set hệ số tắt dần pid lái
 
-//
-#define PROTOCOL_GET_POSE         0x81  // Trả về trạng thái xe
+#define READ_WRITE_MSK      0x80  // mask đọc/ghi 
 
-#define PROTOCOL_PAD              0xFFFFFFFF
+// Các mã lệnh set giá trị biến
+#define SET_DRIVE_REF         0x01  // tham chiếu bánh dẫn động
+#define SET_STEER_REF         0x02  // tham chiếu góc lái
+#define SET_DRIVE_KP          0x03  // kp bánh dẫn động
+#define SET_DRIVE_KI          0x04  // ki bánh dẫn động
+#define SET_DRIVE_KD          0x05  // kd bánh dẫn động
+#define SET_STEER_KP          0x06  // kp góc lái
+#define SET_STEER_KI          0x07  // ki góc lái
+#define SET_STEER_KD          0x08  // kd góc lái
+#define SET_ENCODER_PPR       0x09  // số xung/vòng của encoder
+#define SET_WHEEL_PERIMETER   0x0A  // chu vi vòng lăn bánh dẫn động
+#define SET_DECAY             0x0B  // hệ số tắt dần (PID)
+
+// Các mã lệnh yêu cầu gửi giá trị biến
+#define SEND_DRIVE_REF        0x81  // tham chiếu bánh dẫn động
+#define SEND_STEER_REF        0x82  // tham chiếu góc lái
+#define SEND_DRIVE_KP         0x83  // kp bánh dẫn động
+#define SEND_DRIVE_KI         0x84  // ki bánh dẫn động
+#define SEND_DRIVE_KD         0x85  // kd bánh dẫn động
+#define SEND_STEER_KP         0x86  // kp góc lái
+#define SEND_STEER_KI         0x87  // ki góc lái
+#define SEND_STEER_KD         0x88  // kd góc lái
+#define SEND_ENCODER_PPR      0x89  // số xung/vòng của encoder
+#define SEND_WHEEL_PERIMETER  0x8A  // chu vi vòng lăn bánh dẫn động
+#define SEND_DECAY            0x8B  // hệ số tắt dần (PID)
+
+// Các mã lệnh yêu cầu đặc biệt
+#define SEND_POSE             0xFF  // gửi dữ liệu tự định vị
+#define SEND_SAMPLING_RATE    0xFE  // Test và gửi tần số lấy mẫu
+#define UPDATE_REF            0x7F  // cập nhật tham chiếu
+#define SET_WHEEL_DIAMETER    0x7E  // cập nhật tham chiếu
+
+#define PACKET_PAD            0xFFFFFFFF
 
 // Các biến toàn cục ----------------------------------------------------------
 volatile uint8_t protocol_flags;
-volatile float protocol_drive_ref_buff;
-volatile float protocol_steer_ref_buff;
+volatile int16_t protocol_drive_ref_buff;
+volatile Q3_12 protocol_steer_ref_buff;
 
 // Các chương trình con --------------------------------------------------------
 /**
@@ -66,21 +81,12 @@ void protocol_loop()
   dprintln("Bắt đầu nhận truyền thông");
   protocol_flags |= PROTOCOL_FLAG_RECEIVING;
   while (protocol_flags & PROTOCOL_FLAG_RECEIVING)
-  {/*
-    static uint32_t cnt = 0;
-    if (cnt++ > 200000) {
-      cnt = 0;
-      dprint(sys_pose_a);
-      dprint(' ');
-      dprintln(sys_get_wheel_angle());
-    }
-    */
+  {
     if (Serial.available() >= 17) {
       // I) Khai báo biến
       uint8_t buffer[18];   // Vùng nhớ chứa chuỗi truyền
       uint8_t ctrl_code;    // Mã lệnh
-      float *ctrl_val_ptr;  // Con trỏ giá trị truyền
-      uint32_t *comp_ptr;   // Con trỏ chỉ vào các vùng soát lỗi
+      uint32_t *long_ptr;   // Con trỏ 32bit
 
       // Đọc chuỗi truyền.
       // Khung truyền thông theo bảng bên dưới (17 bit):
@@ -107,12 +113,12 @@ void protocol_loop()
       for (int i = 0; i < 17; i++) buffer[i] = Serial.read();
 
       // Kiểm tra 12 bit đệm
-      comp_ptr = (uint32_t*)(buffer);
-      if (*comp_ptr != PROTOCOL_PAD) goto protocol_error;
-      comp_ptr = (uint32_t*)(buffer+5);
-      if (*comp_ptr != PROTOCOL_PAD) goto protocol_error;
-      comp_ptr = (uint32_t*)(buffer+13);
-      if (*comp_ptr != PROTOCOL_PAD) goto protocol_error;
+      long_ptr = (uint32_t*)(buffer);
+      if (*long_ptr != PACKET_PAD) goto protocol_error;
+      long_ptr = (uint32_t*)(buffer+5);
+      if (*long_ptr != PACKET_PAD) goto protocol_error;
+      long_ptr = (uint32_t*)(buffer+13);
+      if (*long_ptr != PACKET_PAD) goto protocol_error;
 
       // Một số thông số cần đảm bảo xe dừng hẳn
       // trước khi thay đổi
@@ -120,17 +126,40 @@ void protocol_loop()
 
       // Giải mã tín hiệu
       ctrl_code = buffer[4];
-      ctrl_val_ptr = (float*)(buffer + 9);
+      long_ptr = (uint32_t*)(buffer + 9);
       switch(ctrl_code)
       {
-      case PROTOCOL_STOP:           // Dừng
-        protocol_stop();
-        dprintln("Đã dừng");
-        // Thực hiện tiếp tục lệnh bên dưới
-      case PROTOCOL_UPDATE_REF:     // Cập nhật tham chiếu
+      case SEND_POSE:           // gửi dữ liệu tự định vị
+      case SEND_SAMPLING_RATE:  // Test và gửi tần số lấy mẫu
+        if (agv_is_stopped) {
+          protocol_flags &= ~PROTOCOL_FLAG_RECEIVING;
+
+          // bắt đầu test
+          sys_sample_cnt = 0;
+          protocol_flags |= PROTOCOL_FLAG_SAMPLE_RATE;
+          delay(1000);
+          Serial.write("\0\0");
+          Serial.write((uint8_t)sys_sample_cnt);
+          protocol_flags &= ~PROTOCOL_FLAG_SAMPLE_RATE;
+          
+          protocol_flags |= PROTOCOL_FLAG_RECEIVING;
+        }
+        break;
+      case UPDATE_REF:  // cập nhật tham chiếu
         protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
         dprintln("Đã cập nhật tham chiếu");
         break;
+      default:  // có lỗi xảy ra, thoát
+protocol_error:
+        dprintln("Có lỗi xảy ra");
+        protocol_flags |= PROTOCOL_FLAG_ERROR;
+      /*
+      case PROTOCOL_STOP:           // Dừng
+        //protocol_drive_ref_buff = 
+        //protocol_ref_buffsteer = 
+        dprintln("Đã dừng");
+        // Thực hiện tiếp tục lệnh bên dưới
+      case PROTOCOL_UPDATE_REF:     // Cập nhật tham chiếu
       case PROTOCOL_ADD_DRIVE_REF:  // Đổi tham chiếu dẫn động (tăng/giảm)
         protocol_drive_ref_buff = *ctrl_val_ptr;
         dprint("Tăng/giảm tham chiếu dẫn động: ");
@@ -185,19 +214,6 @@ void protocol_loop()
         dprint(settings.encoder_ppr);
         dprintln(" m");
         break;
-      case PROTOCOL_GET_SAMPLE_RATE:  // test tần số lấy mẫu
-        if (agv_is_stopped) {
-          protocol_flags &= ~PROTOCOL_FLAG_RECEIVING;
-
-          // bắt đầu test
-          sys_sample_cnt = 0;
-          protocol_flags |= PROTOCOL_FLAG_SAMPLE_RATE;
-          delay(1000);
-          dprint("Số lần lấy mẫu trong 1s: "); dprintln(sys_sample_cnt);
-          protocol_flags &= ~PROTOCOL_FLAG_SAMPLE_RATE;
-          protocol_flags |= PROTOCOL_FLAG_RECEIVING;
-        }
-        break;
       case PROTOCOL_SET_DRIVE_DECAY:  // set hệ số tắt dần
         drive_pid.se_decay = *ctrl_val_ptr;
         break;
@@ -212,21 +228,15 @@ void protocol_loop()
         dprint(", a = ");
         dprint(sys_pose_a);
         dprintln(")");
-        break;
-      default:  // có lỗi xảy ra, thoát
-protocol_error:
-        dprintln("Có lỗi xảy ra");
-        protocol_flags &= ~PROTOCOL_FLAG_RECEIVING;
-        protocol_flags |= PROTOCOL_FLAG_ERROR;
+        break;*/
       }
     }
+    
+    if (protocol_flags & PROTOCOL_FLAG_ERROR)
+      protocol_flags &= ~PROTOCOL_FLAG_RECEIVING;
   }
 
-  // khi bị lỗi sẽ cho dừng xe
-  protocol_stop();
-  protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
-
-  // Cho dừng hệ thống
+  // khi bị lỗi sẽ cho dừng hệ thống
   sys_halt();
   dprintln("Đã cho dừng hệ thống");
 
@@ -241,15 +251,4 @@ protocol_error:
     delay(250);                       // Chu kỳ = 0.5s
     // TODO: thêm cách thoát khỏi vòng lặp lỗi
   }
-}
-
-/**
- * Cho dừng xe. Reset trị số tích phân trong các bộ PID.
- */
-void protocol_stop()
-{
-  protocol_drive_ref_buff = sys_get_wheel_angle();
-  protocol_steer_ref_buff = sys_pose_a;
-  drive_pid.se = 0;
-  steer_pid.se = 0;
 }

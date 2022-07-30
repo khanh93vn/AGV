@@ -11,6 +11,6 @@
 
 void imu_init();
 
-float imu_get_angle(float *angle, float *vec);
+uint8_t imu_update();
 
 #endif

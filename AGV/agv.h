@@ -35,9 +35,6 @@
 #include "cpu_map.h"    // Khai báo chân GPIO và các thanh ghi
 #include "defaults.h"   // Các thông số mặc định và hằng số
 #include "settings.h"   // Quản lý thông số cài đặt
-#include "pid.h"        // Code thư viện PID đơn giản
-#include "drive.h"      // Module điều khiển bánh dẫn động
-#include "steer.h"      // Module điều khiển động cơ lái
 #include "imu.h"        // Module đọc cảm biến quán tính (MPU6050)
 #include "protocol.h"   // Module truyền thông, giao tiếp
 #include "system.h"     // Module quản lý thực thi hệ thống thời gian thực

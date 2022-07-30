@@ -1,15 +1,29 @@
 // File: system.h
 // Quản lý hệ thống:
-// - Định thời cho việc lấy mẫu và điều khiển.
+// - Định thời cho việc lấy mẫu và điều khiển PID.
 // - Ngắt đọc encoder.
 
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-// Trạng thái tự định vị của xe
-extern volatile float sys_pose_x;   // Tọa độ x
-extern volatile float sys_pose_y;   // Tọa độ y
-extern volatile float sys_pose_a;   // Hướng đầu xe
+// Dữ liệu điều khiển PID của bánh dẫn động
+extern volatile uint16_t sys_dr_ref;
+
+// Dữ liệu điều khiển PID của cơ cấu lái
+extern volatile Q3_12 sys_st_ref;
+
+// Dữ liệu tự định vị của xe
+typedef struct {
+  Q7_24 x, y, a;      // x, y và góc hướng đầu xe
+  Q3_28 v[2], pv[2];  // vector chỉ hướng đầu xe
+} sys_pose_t;
+extern volatile sys_pose_t sys_pose;
+
+// Hệ quy chiếu làm mốc
+typedef struct {
+  Q25_6 x, y;
+} frame_t;
+extern volatile frame_t frame;
 
 // Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
 extern volatile uint16_t sys_sample_cnt;
@@ -21,9 +35,6 @@ void sys_init();
 void sys_halt();
 
 // Lấy dữ liệu về tốc độ hiện tại (m/s)
-float sys_get_spd();
-
-// Lấy dữ liệu vị trí bánh xe (radians)
-float sys_get_wheel_angle();
+Q17_14 sys_get_spd();
 
 #endif

@@ -9,17 +9,17 @@
 // Số xung encoder / vòng mặc định
 #define ENCODER_PPR     600
 
-// Đường kính mặc định bánh dẫn động (m)
-#define WHEEL_DIAMETER  0.05
+// Số đo mặc định vòng bánh xe dẫn động (m)
+#define WHEEL_PERIMETER 107374182   // P = Q3_28(0.4 m)
 
 // Thông số PID mặc định
-#define SE_DECAY        0.999     // Hệ số tắt dần
-#define DRIVE_KP        2.5
-#define DRIVE_KI        0.1
-#define DRIVE_KD        0.5
-#define STEER_KP        5.0
-#define STEER_KI        0.1
-#define STEER_KD        0.5
+#define SE_DECAY        16367       // Hệ số tắt dần = Q1_14(0.999)
+#define DRIVE_KP        640         // kp = Q7_8(2.5)
+#define DRIVE_KI        26          // ki = Q7_8(0.1)
+#define DRIVE_KD        128         // kd = Q7_8(0.5)
+#define STEER_KP        1280        // kp = Q7_8(5.0)
+#define STEER_KI        26          // ki = Q7_8(0.1)
+#define STEER_KD        128         // kd = Q7_8(0.5)
 
 // Các giá trị yêu cầu thận trọng khi thay đổi -------------------------------
 
@@ -38,8 +38,11 @@
 // CÁC GIÁ TRỊ KHÔNG ĐƯỢC PHÉP THAY ĐỔI ---------------------------------------
 
 // Các hằng số
-#define PI              3.141592653589793238
-#define TWO_PI          6.283185307179586
+// Một số hằng số được sử dụng
+#define Q3_28ONE        268435456L            // Giá trị 1.0 lưu kiểu Q3_28
+#define Q3_28PI         843314857L            // Giá trị số pi lưu kiểu Q3_28
+#define Q3_12PI         12868                 // Giá trị số pi lưu kiểu Q3_12
+#define Q3_12TWO_PI     25736                 // Giá trị 2pi lưu kiểu Q3_12
 
 // Tần số truyền thông UART
 #define BAUDRATE        115200
