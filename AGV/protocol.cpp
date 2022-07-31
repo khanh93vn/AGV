@@ -107,6 +107,7 @@ void protocol_loop()
   // Bắt đầu nhận tín hiệu truyền thông
   dprintln("Bắt đầu nhận truyền thông");
   protocol_flags |= PROTOCOL_FLAG_RECEIVING;
+  Serial.write("AGV ready!\r");
   while (protocol_flags & PROTOCOL_FLAG_RECEIVING)
   {
     if (Serial.available() >= 17) {
@@ -195,6 +196,7 @@ void protocol_loop()
             if (addr_code < READ_32_BIT_BEGIN)
               *(uint16_t*)data_ptr = *(uint16_t*)(buffer + 9);
             else *data_ptr = *(uint32_t*)(buffer + 9);
+            dprint("Đã nhận được: "); dprintln(*(uint32_t*)(buffer + 9));
           }
         }
         else {
