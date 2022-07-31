@@ -163,7 +163,6 @@ ISR (PCINT2_vect)
  */
 ISR(TIMER2_COMPA_vect)
 {
-  debugval01++;
   // I) Cập nhật dữ liệu encoder
 
   // Chuyển giá trị qua encoder_pos_prime

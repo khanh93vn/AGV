@@ -35,7 +35,7 @@ else:
 
 com = Serial(device, baudrate=115200, timeout=0.1)
 
-_thread.start_new_thread(uart_receive, (com,))
+# _thread.start_new_thread(uart_receive, (com,))
 
 try:
     while True:

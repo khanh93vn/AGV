@@ -4,7 +4,9 @@
 #ifndef AGV_H
 #define AGV_H
 
-#define DEBUG 1
+// Nếu bật chế độ DEBUG, các chức năng
+// truyền dữ liệu sẽ không thực hiện được
+#define DEBUG 0
 
 #if DEBUG
   extern volatile long debugval01, debugval02;

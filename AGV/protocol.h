@@ -4,6 +4,9 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+#define SEND_2BYTES_INT(ptr) Serial.write((uint8_t*)ptr, 2)
+#define SEND_4BYTES_INT(ptr) Serial.write((uint8_t*)ptr, 4)
+
 // Các cờ của module
 #define PROTOCOL_FLAG_CLEARED     0x00  // Xóa tất cả các cờ
 #define PROTOCOL_FLAG_RECEIVING   0x01  // Cờ báo sẵn sàng nhận

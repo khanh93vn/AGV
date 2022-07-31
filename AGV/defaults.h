@@ -34,6 +34,7 @@
 // THANH GHI ORC CỦA BỘ ĐỊNH THỜI ĐƯỢC CHỌN
 // KHÔNG BỊ TRÀN
 #define CLK_SEL         (_BV(CS22) | _BV(CS21) | _BV(CS20))
+//#define CLK_SEL         (_BV(CS22) | _BV(CS21) | _BV(CS20))
 
 // CÁC GIÁ TRỊ KHÔNG ĐƯỢC PHÉP THAY ĐỔI ---------------------------------------
 

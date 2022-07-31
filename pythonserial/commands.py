@@ -6,34 +6,48 @@ Chứa các lệnh gửi xuống xe.
 |____________|      |____________|      |____________|
 """
 
-from struct import pack
+from struct import pack, unpack
 from math import pi
 
-PROTOCOL_STOP             = b'\x01'
-PROTOCOL_UPDATE_REF       = b'\x02'
-PROTOCOL_SET_DRIVE_REF    = b'\x03'
-PROTOCOL_SET_DRIVE_KP     = b'\x04'
-PROTOCOL_SET_DRIVE_KI     = b'\x05'
-PROTOCOL_SET_DRIVE_KD     = b'\x06'
-PROTOCOL_SET_STEER_REF    = b'\x07'
-PROTOCOL_SET_STEER_KP     = b'\x08'
-PROTOCOL_SET_STEER_KI     = b'\x09'
-PROTOCOL_SET_STEER_KD     = b'\x0A'
-PROTOCOL_SET_WHEEL_D      = b'\x0B'
-PROTOCOL_SET_ENCODER_PPR  = b'\x0C'
-PROTOCOL_GET_SAMPLE_RATE  = b'\x0D'
-PROTOCOL_SET_DRIVE_DECAY  = b'\x0E'
-PROTOCOL_SET_STEER_DECAY  = b'\x0F'
+# Các mã lệnh set giá trị biến
+SET_DRIVE_REF         = b'\x01'  # tham chiếu bánh dẫn động
+SET_STEER_REF         = b'\x02'  # tham chiếu góc lái
+SET_DRIVE_KP          = b'\x03'  # kp bánh dẫn động
+SET_DRIVE_KI          = b'\x04'  # ki bánh dẫn động
+SET_DRIVE_KD          = b'\x05'  # kd bánh dẫn động
+SET_STEER_KP          = b'\x06'  # kp góc lái
+SET_STEER_KI          = b'\x07'  # ki góc lái
+SET_STEER_KD          = b'\x08'  # kd góc lái
+SET_ENCODER_PPR       = b'\x09'  # số xung/vòng của encoder
+SET_WHEEL_PERIMETER   = b'\x0A'  # chu vi vòng lăn bánh dẫn động
+SET_DECAY             = b'\x0B'  # hệ số tắt dần (PID)
 
-PROTOCOL_GET_POSE         = b'\x81'
+# Các mã lệnh yêu cầu gửi giá trị biến
+SEND_DRIVE_REF        = b'\x81'  # tham chiếu bánh dẫn động
+SEND_STEER_REF        = b'\x82'  # tham chiếu góc lái
+SEND_DRIVE_KP         = b'\x83'  # kp bánh dẫn động
+SEND_DRIVE_KI         = b'\x84'  # ki bánh dẫn động
+SEND_DRIVE_KD         = b'\x85'  # kd bánh dẫn động
+SEND_STEER_KP         = b'\x86'  # kp góc lái
+SEND_STEER_KI         = b'\x87'  # ki góc lái
+SEND_STEER_KD         = b'\x88'  # kd góc lái
+SEND_ENCODER_PPR      = b'\x89'  # số xung/vòng của encoder
+SEND_WHEEL_PERIMETER  = b'\x8A'  # chu vi vòng lăn bánh dẫn động
+SEND_DECAY            = b'\x8B'  # hệ số tắt dần (PID)
 
-PROTOCOL_PAD = b'\xFF\xFF\xFF\xFF'
-IEEE_ZERO = b'\x00\x00\x00\x00'
+# Các mã lệnh yêu cầu đặc biệt
+SEND_POSE             = b'\xFF'  # gửi dữ liệu tự định vị
+SEND_SAMPLING_RATE    = b'\xFE'  # Test và gửi tần số lấy mẫu
+UPDATE_REF            = b'\x7F'  # cập nhật tham chiếu
+SET_WHEEL_DIAMETER    = b'\x7E'  # đường kính bánh xe
+
+READ_WRITE_MSK          = b'\x80'
+PACKET_PAD              = b'\xFF\xFF\xFF\xFF'
 
 def get_cmd_bytestring(cmd_code, value=0):
-    cmd_bytestring = (PROTOCOL_PAD + cmd_code +
-                      PROTOCOL_PAD + pack('f', value) +
-                      PROTOCOL_PAD)
+    cmd_bytestring = (PACKET_PAD + cmd_code +
+                      PACKET_PAD + pack('f', value) +
+                      PACKET_PAD)
     return cmd_bytestring
 
 def lin(com, pos):
@@ -51,22 +65,20 @@ def cmd_help(com):
     print('\n'.join(command_map.keys()))
 
 command_map = dict(
-    stop=PROTOCOL_STOP,
-    ur=PROTOCOL_UPDATE_REF,
-    sdrf=PROTOCOL_SET_DRIVE_REF,
-    sdkp=PROTOCOL_SET_DRIVE_KP,
-    sdki=PROTOCOL_SET_DRIVE_KI,
-    sdkd=PROTOCOL_SET_DRIVE_KD,
-    ssrf=PROTOCOL_SET_STEER_REF,
-    sskp=PROTOCOL_SET_STEER_KP,
-    sski=PROTOCOL_SET_STEER_KI,
-    sskd=PROTOCOL_SET_STEER_KD,
-    swd=PROTOCOL_SET_WHEEL_D,
-    seppr=PROTOCOL_SET_ENCODER_PPR,
-    gsr=PROTOCOL_GET_SAMPLE_RATE,
-    sddc=PROTOCOL_SET_DRIVE_DECAY,
-    ssdc=PROTOCOL_SET_STEER_DECAY,
-    gp=PROTOCOL_GET_POSE,
+    # ur=UPDATE_REF,
+    # sdrf=SET_DRIVE_REF,
+    # sdkp=SET_DRIVE_KP,
+    # sdki=SET_DRIVE_KI,
+    # sdkd=SET_DRIVE_KD,
+    # ssrf=SET_STEER_REF,
+    # sskp=SET_STEER_KP,
+    # sski=SET_STEER_KI,
+    # sskd=SET_STEER_KD,
+    # swp=SET_WHEEL_PERIMETER,
+    # seppr=SET_ENCODER_PPR,
+    gsr=SEND_SAMPLING_RATE,
+    # sdc=SET_STEER_DECAY,
+    # gp=GET_POSE,
     lin=lin,
     ang=ang,
     help=cmd_help,
@@ -77,5 +89,13 @@ def execute_command(com, cmd, args):
     cmd_code = command_map.get(cmd)
     if isinstance(cmd_code, (bytes, bytearray)):
         com.write(get_cmd_bytestring(cmd_code, *args))
+        if (READ_WRITE_MSK[0] & cmd_code[0]):
+            try:
+                data = b''
+                while len(data) < 4:
+                    data += com.read()
+                print("Received:", unpack('>i', data));
+            except:
+                print("Error, data received:", data)
     else:
         cmd_code(com, *args)

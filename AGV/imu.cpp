@@ -82,14 +82,10 @@ uint8_t imu_update()
 
   // Dữ liệu quarternion (integer 16 bit) được chứa trong các
   // byte (0, 1), (4, 5), (8, 9), (12, 13)
-//  q[0] = (Q1_14)fifo_buffer[0] << 8 | fifo_buffer[1];
-//  q[1] = (Q1_14)fifo_buffer[4] << 8 | fifo_buffer[5];
-//  q[2] = (Q1_14)fifo_buffer[8] << 8 | fifo_buffer[9];
-//  q[3] = (Q1_14)fifo_buffer[12] << 8 | fifo_buffer[13];
-  q[0] = *((int16_t*)fifo_buffer);
-  q[1] = *((int16_t*)(fifo_buffer+4));
-  q[2] = *((int16_t*)(fifo_buffer+8));
-  q[3] = *((int16_t*)(fifo_buffer+12));
+  q[0] = (Q1_14)fifo_buffer[0] << 8 | fifo_buffer[1];
+  q[1] = (Q1_14)fifo_buffer[4] << 8 | fifo_buffer[5];
+  q[2] = (Q1_14)fifo_buffer[8] << 8 | fifo_buffer[9];
+  q[3] = (Q1_14)fifo_buffer[12] << 8 | fifo_buffer[13];
 
   // Tính hướng (góc xoay theo trục Z).
   // Công thức đối với quarternion kiểu float:
@@ -99,13 +95,16 @@ uint8_t imu_update()
   sys_pose.v[1] = ((((Q3_28)q[0]*q[0] + (Q3_28)q[1]*q[1])<<1) -
                      Q3_28ONE);
 
-  // Hiển thị
-  dprint("Quarternion: ");
-  dprint(q[0]); dprint(' ');
-  dprint(q[1]); dprint(' ');
-  dprint(q[2]); dprint(' ');
-  dprintln(q[3]);
-  //dprint("Angle: "); dprintln(angle*180.0/PI);
+  // Hiển thị để kiểm tra xem đọc đúng chưa
+//  dprint("Quarternion: ");
+//  dprint(q[0]); dprint(' ');
+//  dprint(q[1]); dprint(' ');
+//  dprint(q[2]); dprint(' ');
+//  dprintln(q[3]);
+//  dprint("Heading: ");
+//  dprint(sys_pose.v[0]/268435456.0); dprint(' ');
+//  dprintln(sys_pose.v[1]/268435456.0);
+//  //dprint("Angle: "); dprintln(angle*180.0/PI);
 
   return 0;
 }
