@@ -14,12 +14,13 @@
 
 // Thông số PID mặc định
 #define SE_DECAY        16367       // Hệ số tắt dần = Q1_14(0.999)
-#define DRIVE_KP        640         // kp = Q7_8(2.5)
-#define DRIVE_KI        26          // ki = Q7_8(0.1)
-#define DRIVE_KD        128         // kd = Q7_8(0.5)
-#define STEER_KP        1280        // kp = Q7_8(5.0)
-#define STEER_KI        26          // ki = Q7_8(0.1)
-#define STEER_KD        128         // kd = Q7_8(0.5)
+#define DRIVE_KP        -20480      // kp = Q7_8(-80)
+#define DRIVE_KI        -20480      // ki = Q7_8(-80)
+#define DRIVE_KD        -1024       // kd = Q7_8(-4)
+//#define DRIVE_KD        0         // kd = Q7_8(0.0)
+#define STEER_KP        -1280       // kp = Q7_8(-5.0)
+#define STEER_KI        -26         // ki = Q7_8(-0.1)
+#define STEER_KD        -128        // kd = Q7_8(-0.5)
 
 // Các giá trị yêu cầu thận trọng khi thay đổi -------------------------------
 

@@ -9,14 +9,14 @@
 #define DEBUG 0
 
 #if DEBUG
-  extern volatile long debugval01, debugval02;
-  extern volatile long *debugval_ptr;
+  extern volatile unsigned long debugval01, debugval02;
   #define dprint(m) Serial.print(m)
   #define dprintln(m) Serial.println(m)
 #else
   #define dprint(m)
   #define dprintln(m)
 #endif
+extern volatile unsigned char *debug_ptr;
 
 // nhập thư viện chuẩn
 #include <stdint.h>     // Cần để khai báo các biến số nguyên

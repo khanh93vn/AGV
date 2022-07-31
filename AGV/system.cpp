@@ -191,7 +191,7 @@ ISR(TIMER2_COMPA_vect)
   // được một phép nhân và một phép chia
   // trong thuật toán (được tính sẵn
   // trong module settings)
-  dr_e = sys_dr_ref - encoder_position; // Tính sai số
+  dr_e = encoder_position - sys_dr_ref; // Tính sai số
   dr_de = encoder_pos_dot;              // Tính de
   if ((dr_e>=0 && dr_pe<0) || (dr_e<0 && dr_pe>=0))
     dr_se = 0;
@@ -213,16 +213,20 @@ ISR(TIMER2_COMPA_vect)
   } else direction_bit = LOW;
   digitalWrite(IO_DRIVE_H1, direction_bit);  // Chỉnh chiều quay
   digitalWrite(IO_DRIVE_H2, !direction_bit);
-  duty_cycle &= 255;                         // Ngõ ra phải trong đoạn [0, 255]
+  if (duty_cycle > 255) duty_cycle = 255;    // Ngõ ra phải trong đoạn [0, 255]
   if (duty_cycle < 70) duty_cycle = 0;       // Không đủ để thắng ma sát
   analogWrite(IO_DRIVE_P, (uint8_t)duty_cycle);
+
+//  dprint(dr_e); dprint(" ");
+//  dprint(sys_dr_ref); dprint(" ");
+//  dprintln(duty_cycle);
 
   // IV) Cập nhật góc đầu xe từ cảm biến quán tính
   imu_update();
   // TODO: tính sys_pose.a bằng hàm arctan
 
   // V) Chạy bộ điều khiển PID góc lái
-  st_e = sys_st_ref - Q7_24_TO_Q3_12(sys_pose.a);   // Tính sai số
+  st_e = Q7_24_TO_Q3_12(sys_pose.a) - sys_st_ref;   // Tính sai số
   while (st_e > Q3_12PI)
     st_e -= Q3_12TWO_PI;     // Đảm bảo e < pi
   while (st_e < -Q3_12PI)
@@ -248,7 +252,7 @@ ISR(TIMER2_COMPA_vect)
   } else direction_bit = LOW;
   digitalWrite(IO_STEER_H1, direction_bit);  // Chỉnh chiều quay
   digitalWrite(IO_STEER_H2, !direction_bit);
-  duty_cycle &= 255;                         // Ngõ ra phải trong đoạn [0, 255]
+  if (duty_cycle > 255) duty_cycle = 255;    // Ngõ ra phải trong đoạn [0, 255]
   analogWrite(IO_STEER_P, (uint8_t)duty_cycle);
 
   // VII) Tính tọa độ của xe trong hệ quy chiếu hiện tại
@@ -272,9 +276,11 @@ ISR(TIMER2_COMPA_vect)
 
   // VIII) Cập nhật các điểm tham chiếu từ module protocol
   if (protocol_flags & PROTOCOL_FLAG_UPDATE_REF) {
-    sys_dr_ref = protocol_drive_ref_buff;
+    sys_dr_ref += protocol_drive_ref_buff;
     sys_st_ref = protocol_steer_ref_buff;
     protocol_flags &= ~PROTOCOL_FLAG_UPDATE_REF;
+    dprint(sys_dr_ref); dprint(" ");
+    dprintln(protocol_drive_ref_buff);
   }
 
   // IX) Cập nhật để đảm bảo các biến
@@ -284,11 +290,9 @@ ISR(TIMER2_COMPA_vect)
     sys_dr_ref += settings.encoder_ppr;
   } else if (encoder_position > settings.encoder_ppr) {
     encoder_position -= settings.encoder_ppr;
-    sys_st_ref -= settings.encoder_ppr;
+    sys_dr_ref -= settings.encoder_ppr;
   }
   // TODO: thêm cập nhật sys_pose và hệ quy chiếu
-
-  //dprintln(vehicle_heading);
 
   if (protocol_flags & PROTOCOL_FLAG_SAMPLE_RATE) {
     sys_sample_cnt++;

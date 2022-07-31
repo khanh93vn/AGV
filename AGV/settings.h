@@ -11,9 +11,11 @@ typedef struct {
   Q1_14 se_decay;         // Hệ số tắt dần của giá trị sai số tích lũy
 
   // Dữ liệu thông số bộ PID bánh dẫn động
+  Q7_8 dr_kp_raw, dr_ki_raw, dr_kd_raw;
   Q7_8 dr_kp, dr_ki, dr_kd;
 
   // Dữ liệu thông số bộ PID lái
+  Q7_8 st_kp_raw, st_ki_raw, st_kd_raw;
   Q7_8 st_kp, st_ki, st_kd;
 
   // Các thông số phụ thuộc

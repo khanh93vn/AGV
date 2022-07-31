@@ -46,6 +46,7 @@ SEND_DECAY            = 0x8B  # hệ số tắt dần (PID)
 # Các mã lệnh yêu cầu đặc biệt
 SEND_POSE             = 0xFF  # gửi dữ liệu tự định vị
 SEND_SAMPLING_RATE    = 0xFE  # Test và gửi tần số lấy mẫu
+SEND_DEBUG_VAL        = 0xFD  # Gửi giá trị debug
 UPDATE_REF            = 0x7F  # cập nhật tham chiếu
 SET_WHEEL_DIAMETER    = 0x7E  # đường kính bánh xe
 
@@ -65,39 +66,51 @@ PACKET_PAD            = b'\xFF\xFF\xFF\xFF'
 
 def get_cmd_bytestring(cmd_code, value=0):
     cmd_bytestring = (PACKET_PAD + pack('B', cmd_code) +
-                      PACKET_PAD + pack('f', value) +
+                      PACKET_PAD + pack('i', int(value)) +
                       PACKET_PAD)
     return cmd_bytestring
 
 def lin(com, pos):
-    pos_rad = pos*pi/180
-    com.write(get_cmd_bytestring(PROTOCOL_SET_DRIVE_REF, pos_rad))
-    com.write(get_cmd_bytestring(PROTOCOL_UPDATE_REF))
+    com.write(get_cmd_bytestring(SET_DRIVE_REF, pos*2**28))
+    com.write(get_cmd_bytestring(UPDATE_REF))
 
 def ang(com, heading):
-    heading_rad = heading*pi/180
-    com.write(get_cmd_bytestring(PROTOCOL_SET_STEER_REF, heading_rad))
-    com.write(get_cmd_bytestring(PROTOCOL_UPDATE_REF))
+    com.write(get_cmd_bytestring(SET_STEER_REF, heading))
+    com.write(get_cmd_bytestring(UPDATE_REF))
 
 def cmd_help(com):
     print("Danh sách các lệnh:")
     print('\n'.join(command_map.keys()))
 
 command_map = dict(
-    # ur=UPDATE_REF,
-    # sdrf=SET_DRIVE_REF,
-    # sdkp=SET_DRIVE_KP,
-    # sdki=SET_DRIVE_KI,
-    # sdkd=SET_DRIVE_KD,
-    # ssrf=SET_STEER_REF,
-    # sskp=SET_STEER_KP,
-    # sski=SET_STEER_KI,
-    # sskd=SET_STEER_KD,
-    # swp=SET_WHEEL_PERIMETER,
-    # seppr=SET_ENCODER_PPR,
+    sdrf=SET_DRIVE_REF,
+    ssrf=SET_STEER_REF,
+    sdkp=SET_DRIVE_KP,
+    sdki=SET_DRIVE_KI,
+    sdkd=SET_DRIVE_KD,
+    sskp=SET_STEER_KP,
+    sski=SET_STEER_KI,
+    sskd=SET_STEER_KD,
+    swp=SET_WHEEL_PERIMETER,
+    seppr=SET_ENCODER_PPR,
+    sdc=SET_DECAY,
+
+    gdrf=SEND_DRIVE_REF,
+    gsrf=SEND_STEER_REF,
+    gdkp=SEND_DRIVE_KP,
+    gdki=SEND_DRIVE_KI,
+    gdkd=SEND_DRIVE_KD,
+    gskp=SEND_STEER_KP,
+    gski=SEND_STEER_KI,
+    gskd=SEND_STEER_KD,
+    gwp=SEND_WHEEL_PERIMETER,
+    geppr=SEND_ENCODER_PPR,
+    gdc=SEND_DECAY,
+
+    gp=SEND_POSE,
     gsr=SEND_SAMPLING_RATE,
-    # sdc=SET_STEER_DECAY,
-    # gp=GET_POSE,
+    gdv=SEND_DEBUG_VAL,
+    ur=UPDATE_REF,
     lin=lin,
     ang=ang,
     help=cmd_help,
@@ -110,16 +123,20 @@ def execute_command(com, cmd, args):
         if (READ_WRITE_MSK & cmd_code):
             data = com.readall()
             if len(data) > 0:
-                print("Leftover bytes in buffer:", data)
+                print("Các bytes thừa:", data)
         com.write(get_cmd_bytestring(cmd_code, *args))
         if (READ_WRITE_MSK & cmd_code):
-            print("Receiving data")
+            print("Đang nhận dữ liệu")
             if cmd_code == SEND_SAMPLING_RATE:
                 sleep(1.0)
             try:
-                data = com.read(4)
-                print("Received:", unpack('i', data)[0]);
+                if (~READ_WRITE_MSK & cmd_code) < READ_32_BIT_BEGIN:
+                    data = com.read(2)
+                    print("Đã nhận được:", unpack('h', data)[0]);
+                else:
+                    data = com.read(4)
+                    print("Đã nhận được:", unpack('i', data)[0]);
             except:
-                print("Error, data received:", data)
+                print("Lỗi!, nhận được:", data)
     else:
         cmd_code(com, *args)

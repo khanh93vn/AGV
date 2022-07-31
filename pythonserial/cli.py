@@ -7,7 +7,6 @@ Giao tiếp với xe qua giao diện CLI.
 """
 
 import sys
-import readline
 import _thread
 from serial import Serial
 from commands import execute_command
@@ -38,10 +37,14 @@ com = Serial(device, baudrate=115200, timeout=10.0)
 
 # com.timeout = 0.1
 # _thread.start_new_thread(uart_receive, (com,))
-ready_str = com.read_until('\r')
+# ready = True
 
-if b'AGV ready!' in ready_str:
-    print("Connection ready")
+import readline
+print("Đang kết nối...")
+ready_str = com.read_until('\r')
+ready = b'AGV ready!' in ready_str
+if ready:
+    print("Kết nối đã sẵn sàng")
     com.timeout = 1.0
     try:
         while True:
@@ -58,6 +61,6 @@ if b'AGV ready!' in ready_str:
     com.close()
 else:
     if len(ready_str) > 0:
-        print("Invalid response:", ready_str)
+        print("Không nhận dạng được hồi đáp:", ready_str)
     else:
-        print("No response")
+        print("Không hồi đáp")

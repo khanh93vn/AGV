@@ -7,8 +7,8 @@
 #define READ_WRITE_MSK      0x80  // mask đọc/ghi
 
 // Các mã lệnh set giá trị biến
-#define SET_STEER_REF         0x02  // tham chiếu góc lái
 #define SET_DRIVE_REF         0x01  // tham chiếu bánh dẫn động
+#define SET_STEER_REF         0x02  // tham chiếu góc lái
 #define SET_DRIVE_KP          0x03  // kp bánh dẫn động
 #define SET_DRIVE_KI          0x04  // ki bánh dẫn động
 #define SET_DRIVE_KD          0x05  // kd bánh dẫn động
@@ -35,6 +35,7 @@
 // Các mã lệnh yêu cầu đặc biệt
 #define SEND_POSE             0xFF  // gửi dữ liệu tự định vị
 #define SEND_SAMPLING_RATE    0xFE  // Test và gửi tần số lấy mẫu
+#define SEND_DEBUG_VAL        0xFD  // Gửi giá trị debug
 #define UPDATE_REF            0x7F  // cập nhật tham chiếu
 #define SET_WHEEL_DIAMETER    0x7E  // đường kính bánh xe
 
@@ -48,7 +49,7 @@
 #define READ_32_BIT_BEGIN     SET_WHEEL_PERIMETER
 
 // Điểm kết thúc các mã lệnh đọc
-#define READ_CODE_END         SET_DRIVE_REF+1
+#define READ_CODE_END         SEND_WHEEL_PERIMETER+1
 
 // Bảng địa chỉ của các biến cần đọc ghi
 // như đã liệt kê ở trên (trừ các lệnh yêu
@@ -56,12 +57,12 @@
 const void* RW_ADDRESSES[] = {
   (void*)&protocol_drive_ref_buff,
   (void*)&protocol_steer_ref_buff,
-  (void*)&settings.dr_kp,
-  (void*)&settings.dr_ki,
-  (void*)&settings.dr_kd,
-  (void*)&settings.st_kp,
-  (void*)&settings.st_ki,
-  (void*)&settings.st_kd,
+  (void*)&settings.dr_kp_raw,
+  (void*)&settings.dr_ki_raw,
+  (void*)&settings.dr_kd_raw,
+  (void*)&settings.st_kp_raw,
+  (void*)&settings.st_ki_raw,
+  (void*)&settings.st_kd_raw,
   (void*)&settings.encoder_ppr,
   (void*)&settings.se_decay,
   (void*)&settings.wheel_perimeter,
@@ -178,6 +179,9 @@ void protocol_loop()
           protocol_flags |= PROTOCOL_FLAG_RECEIVING;
         }
         break;
+      case SEND_DEBUG_VAL:
+        SEND_4BYTES_INT(debug_ptr);
+        break;
       case UPDATE_REF:  // cập nhật tham chiếu
         protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
         dprintln("Đã cập nhật tham chiếu");
@@ -190,13 +194,20 @@ void protocol_loop()
             if (addr_code < READ_32_BIT_BEGIN)    // nếu là 1 thì gửi
               SEND_2BYTES_INT(data_ptr);
             else SEND_4BYTES_INT(data_ptr);
+            dprint("Giá trị: "); dprintln(*data_ptr);
           }
           else {                                  // nếu là 0 thì nhận
             data = *(uint32_t*)(buffer + 9);
+            // Tiền xử lý một số trường hợp
+            switch(addr_code) {
+            case SET_DRIVE_REF:       // tham chiếu bánh dẫn động
+              *(int16_t*)&data = (*(int32_t*)&data)/settings.k_pc2m;
+              break;
+            }
             if (addr_code < READ_32_BIT_BEGIN)
-              *(uint16_t*)data_ptr = *(uint16_t*)(buffer + 9);
-            else *data_ptr = *(uint32_t*)(buffer + 9);
-            dprint("Đã nhận được: "); dprintln(*(uint32_t*)(buffer + 9));
+              *(uint16_t*)data_ptr = (uint16_t)data;
+            else *data_ptr = data;
+            dprint("Đã nhận được: "); dprintln(data);
           }
         }
         else {
@@ -204,6 +215,19 @@ protocol_error:
             dprintln("Có lỗi xảy ra");
             protocol_flags |= PROTOCOL_FLAG_ERROR;
         }
+      }
+      
+      // Hậu xử lý một số biến
+      switch(ctrl_code) {
+      case SET_DRIVE_KI:        // ki bánh dẫn động
+      case SET_STEER_KI:        // ki góc lái
+      case SET_DRIVE_KD:        // kd bánh dẫn động
+      case SET_STEER_KD:        // kd góc lái
+      case SET_WHEEL_DIAMETER:  // đổi đường kính bánh xe
+      case SET_ENCODER_PPR:     // số xung/vòng của encoder
+      case SET_WHEEL_PERIMETER: // chu vi vòng lăn bánh dẫn động
+        settings_update();      // Cập nhật các thông số phụ thuộc
+        break;
       }
     }
 
