@@ -4,8 +4,9 @@
  * động cơ lái theo tốc độ tham chiếu và góc tham chiếu.
  * 
  * Việc cần làm:
- * - Thêm module giao tiếp với bên ngoài (UART).
- * - Thêm module đọc và lọc cảm biến quán tính góc xoay.
+ * - Viết app điện thoại để điều khiển từ xa
+ * - Thêm hàm tính arcsin hoặc arccos
+ * - Thử chạy với tần số lấy mẫu cao hơn
  */
 
 #include "agv.h"

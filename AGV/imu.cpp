@@ -95,6 +95,11 @@ uint8_t imu_update()
   sys_pose.v[1] = ((((Q3_28)q[0]*q[0] + (Q3_28)q[1]*q[1])<<1) -
                      Q3_28ONE);
 
+  // Tìm góc từ vector chỉ hướng
+  // (Tính arcsin)
+  sys_pose.v[1]
+
+  
   // Hiển thị để kiểm tra xem đọc đúng chưa
 //  dprint("Quarternion: ");
 //  dprint(q[0]); dprint(' ');
