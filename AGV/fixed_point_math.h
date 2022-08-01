@@ -1,5 +1,8 @@
 // File: fixed_point_math.h
 // Hỗ trợ tính toán kiểu fixed-point.
+// Tham khảo:
+// https://www.embedded.com/fixed-point-math-in-c/
+// http://www.olliw.eu/2014/fast-functions/
 
 #ifndef FIXED_POINT_MATH_H
 #define FIXED_POINT_MATH_H
@@ -66,5 +69,8 @@ typedef int16_t Q3_12;
 //         = (a*b*2^-28)*2^-24
 // =>  c   = (a*b)*2^-28
 #define Q7_24_MUL_Q3_28_AS_Q7_24(A,B) (Q7_24)(((int64_t)A*B)>>28)
+
+// Tìm arccos của một giá trị kiểu Q3_28
+Q3_28 Q3_28acos_lookup(Q3_28 c);
 
 #endif

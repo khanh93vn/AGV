@@ -4,9 +4,14 @@
 #ifndef AGV_H
 #define AGV_H
 
+// Chế độ chạy thử với app điện thoại kết
+// nối qua bluetooth. Tốc độ truyền mặc
+// định của module HC-06 là 9600.
+#define BLUETOOTH 1
+
 // Nếu bật chế độ DEBUG, các chức năng
 // truyền dữ liệu sẽ không thực hiện được
-#define DEBUG 0
+#define DEBUG 1
 
 #if DEBUG
   extern volatile unsigned long debugval01, debugval02;

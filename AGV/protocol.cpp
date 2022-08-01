@@ -3,7 +3,6 @@
 
 #include "agv.h"
 
-
 #define READ_WRITE_MSK      0x80  // mask đọc/ghi
 
 // Các mã lệnh set giá trị biến
@@ -79,11 +78,18 @@ volatile Q3_12 protocol_steer_ref_buff;
  */
 void protocol_init()
 {
+  
   // Cài đặt chân LED báo hiệu
   pinMode(IO_LED, OUTPUT);
 
   // Bắt đầu truyền thông
+
+#if BLUETOOTH
+  // Tần số mặc định của HC-06
+  Serial.begin(9600);
+#else
   Serial.begin(BAUDRATE);
+#endif
 }
 
 /**
@@ -150,7 +156,8 @@ void protocol_loop()
       if (*data_ptr != PACKET_PAD) goto protocol_error;
       data_ptr = (uint32_t*)(buffer+13);
       if (*data_ptr != PACKET_PAD) goto protocol_error;
-
+      dprintln("Packet is ok!");
+      
       // Một số thông số cần đảm bảo xe dừng hẳn
       // trước khi thay đổi
       uint8_t agv_is_stopped = (sys_get_spd() == 0)?1:0;
