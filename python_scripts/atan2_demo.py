@@ -14,10 +14,10 @@ def atan2(y, x):
     if x < 0:
         if y >= 0:
             a = ((y<<27) + (x<<27)) // (y - x)
-            return piQ30//2 - q30_atan_normalized( a )
+            return piQ30 - q30_atan_normalized( a )
         else:
             a = ((y<<27) - (x<<27)) // (y + x)
-            return q30_atan_normalized( a ) - Q30(1.0)
+            return q30_atan_normalized( a ) - piQ30
     if y > 0: return piQ30//2
     if y < 0: return -piQ30//2
     return Q30(0.0)
@@ -48,8 +48,9 @@ def Q30(x):
 
 Q30_a = lambda x: (x*2**28).round().astype('int32')
 lim = 249*np.pi/500
-lim = np.pi/4
+
 a = np.linspace(-lim, lim, 1000)
+a = np.linspace(3*np.pi/4, 5*np.pi/4, 1000)
 s = np.sin(a)
 c = np.cos(a)
 # t = np.linspace(1.0, 0.0, 64)
@@ -61,7 +62,7 @@ cQ30 = Q30_a(c)
 plt.subplot(211)
 plt.title("Biểu đồ  sai số  hàm arctan xấp xỉ")
 plt.plot((s/c), np.arctan2(s, c))
-plt.plot((s/c), np.vectorize(atan2)(sQ30, cQ30)/2**28)
+# plt.plot((s/c), np.vectorize(atan2)(sQ30, cQ30)/2**28)
 plt.ylabel("Arctan (radians)")
 plt.subplot(212)
 plt.plot((s/c), np.arctan2(s, c) - np.vectorize(atan2)(sQ30, cQ30)/2**28)
