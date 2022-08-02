@@ -6,3 +6,16 @@ Modules:
   imu
   protocol
   system
+TODO:
+  Đổi Arduino pin thành IO port ATmega328P (?)
+  thêm calib MPU
+  Thêm cách báo hiệu lỗi đường truyền MPU6050
+  Thêm phần xử  lý lỗi đường truyền MPU6050
+  Thêm code gửi dữ liệu tự định vị
+  Thêm code thoát vòng lặp báo hiệu lỗi
+  Thêm code lưu/tải dữ liệu từ EEPROM
+  Thêm code set chu vi bằng đường kính
+  Thêm hệ số tắt dần vào công thức tính tích phân PID
+  Thêm cập nhật hệ quy chiếu
+  Viết lại module imu và uart thành code C, chuyển toàn bộ project thành C
+  Tách cpu_map và các phần có cài đặt thanh ghi ra

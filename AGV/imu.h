@@ -13,4 +13,6 @@ void imu_init();
 
 uint8_t imu_update();
 
+// TODO: thêm calib MPU
+
 #endif

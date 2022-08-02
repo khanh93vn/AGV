@@ -5,7 +5,6 @@
  * 
  * Việc cần làm:
  * - Viết app điện thoại để điều khiển từ xa
- * - Thêm hàm tính arctan
  * - Thử chạy với tần số lấy mẫu cao hơn
  */
 

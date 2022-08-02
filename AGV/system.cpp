@@ -223,7 +223,6 @@ ISR(TIMER2_COMPA_vect)
 
   // IV) Cập nhật góc đầu xe từ cảm biến quán tính
   imu_update();
-  // TODO: tính sys_pose.a bằng hàm arctan
 
   // V) Chạy bộ điều khiển PID góc lái
   st_e = Q7_24_TO_Q3_12(sys_pose.a) - sys_st_ref;   // Tính sai số
@@ -235,7 +234,6 @@ ISR(TIMER2_COMPA_vect)
   if ((st_e>=0 && st_pe<0) || (st_e<0 && st_pe>=0))
     st_se = 0;
   else st_se += st_e;               // Tính Σe
-  // TODO: thêm hệ số tắt dần vào công thức
 
   // Tính giá trị ngõ ra:
   duty_cycle = ((int32_t)(settings.st_kp)*st_e +
@@ -267,8 +265,10 @@ ISR(TIMER2_COMPA_vect)
   // phép nhân giữa quãng đường đi
   // với sin hoặc cos góc hướng đầu
   // xe (kiểu Q3_28).
-  sys_pose.x += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.v[0]));
-  sys_pose.y += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.v[1]));
+  sys_pose.x += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.pv[0]))>>1;
+  sys_pose.y += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.pv[1]))>>1;
+  sys_pose.x += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.v[0]))>>1;
+  sys_pose.y += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.v[1]))>>1;
 
   // Cập nhật pv
   sys_pose.pv[0] = sys_pose.v[0];
@@ -292,7 +292,7 @@ ISR(TIMER2_COMPA_vect)
     encoder_position -= settings.encoder_ppr;
     sys_dr_ref -= settings.encoder_ppr;
   }
-  // TODO: thêm cập nhật sys_pose và hệ quy chiếu
+  // TODO: thêm cập nhật hệ quy chiếu
 
   if (protocol_flags & PROTOCOL_FLAG_SAMPLE_RATE) {
     sys_sample_cnt++;

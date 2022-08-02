@@ -46,4 +46,7 @@ extern volatile unsigned char *debug_ptr;
 #include "protocol.h"   // Module truyền thông, giao tiếp
 #include "system.h"     // Module quản lý thực thi hệ thống thời gian thực
 
+// TODO: viết lại module imu và uart thành code C, chuyển toàn bộ project thành C
+// TODO: tách cpu_map và các phần có cài đặt thanh ghi ra để
+
 #endif
