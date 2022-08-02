@@ -11,7 +11,7 @@
 
 // Nếu bật chế độ DEBUG, các chức năng
 // truyền dữ liệu sẽ không thực hiện được
-#define DEBUG 1
+#define DEBUG 0
 
 #if DEBUG
   extern volatile unsigned long debugval01, debugval02;

@@ -24,7 +24,7 @@ extern volatile uint8_t protocol_flags;
 // cập nhật các giá trị tham chiếu được thực hiện
 // trong chương trình ngắt của module system.
 extern volatile int16_t protocol_drive_ref_buff;
-extern volatile Q3_12 protocol_steer_ref_buff;
+extern volatile Q3_12_t protocol_steer_ref_buff;
 
 // Khởi động truyền thông
 void protocol_init();

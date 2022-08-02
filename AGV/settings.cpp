@@ -56,9 +56,9 @@ void settings_update()
   settings.k_pc2m = settings.wheel_perimeter/settings.encoder_ppr;
 
   // Thông số PID bánh dẫn động
-  settings.dr_kp = (Q7_8)(((int64_t)settings.dr_kp_raw*settings.k_pc2m)>>28);
-  settings.dr_ki = (Q7_8)(((int64_t)settings.dr_ki_raw*settings.k_pc2m/UPDATE_RATE)>>28); // ki <- ki*dt
-  settings.dr_kd = (Q7_8)(((int64_t)settings.dr_kd_raw*settings.k_pc2m*UPDATE_RATE)>>28); // kd <- kd/dt
+  settings.dr_kp = (Q7_8_t)(((int64_t)settings.dr_kp_raw*settings.k_pc2m)>>28);
+  settings.dr_ki = (Q7_8_t)(((int64_t)settings.dr_ki_raw*settings.k_pc2m/UPDATE_RATE)>>28); // ki <- ki*dt
+  settings.dr_kd = (Q7_8_t)(((int64_t)settings.dr_kd_raw*settings.k_pc2m*UPDATE_RATE)>>28); // kd <- kd/dt
 
   // Thông số PID hệ thống lái
   settings.st_kp = settings.st_kp_raw;

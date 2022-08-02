@@ -4,7 +4,8 @@
  * động cơ lái theo tốc độ tham chiếu và góc tham chiếu.
  * 
  * Việc cần làm:
- * - Viết app điện thoại để điều khiển từ xa
+ * - Sửa lại chỗ cập nhật tham chiếu PID góc lái
+ * - Gửi dữ liệu tự định vị
  * - Thử chạy với tần số lấy mẫu cao hơn
  */
 

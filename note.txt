@@ -16,6 +16,5 @@ TODO:
   Thêm code lưu/tải dữ liệu từ EEPROM
   Thêm code set chu vi bằng đường kính
   Thêm hệ số tắt dần vào công thức tính tích phân PID
-  Thêm cập nhật hệ quy chiếu
   Viết lại module imu và uart thành code C, chuyển toàn bộ project thành C
   Tách cpu_map và các phần có cài đặt thanh ghi ra

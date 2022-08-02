@@ -10,20 +10,18 @@
 extern volatile uint16_t sys_dr_ref;
 
 // Dữ liệu điều khiển PID của cơ cấu lái
-extern volatile Q3_12 sys_st_ref;
+extern volatile Q3_12_t sys_st_ref;
 
 // Dữ liệu tự định vị của xe
 typedef struct {
-  Q7_24 x, y, a;      // x, y và góc hướng đầu xe
-  Q3_28 v[2], pv[2];  // vector chỉ hướng đầu xe
+  // x, y
+  Q7_24_t x, y;
+
+  // vector chỉ hướng đầu xe và
+  // góc tương ứng
+  Q3_28_t a, v[2], pv[2];   
 } sys_pose_t;
 extern volatile sys_pose_t sys_pose;
-
-// Hệ quy chiếu làm mốc
-typedef struct {
-  Q25_6 x, y;
-} frame_t;
-extern volatile frame_t frame;
 
 // Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
 extern volatile uint16_t sys_sample_cnt;
@@ -35,6 +33,6 @@ void sys_init();
 void sys_halt();
 
 // Lấy dữ liệu về tốc độ hiện tại (m/s)
-Q17_14 sys_get_spd();
+Q17_14_t sys_get_spd();
 
 #endif

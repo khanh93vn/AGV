@@ -10,11 +10,10 @@
 volatile uint16_t sys_dr_ref, dr_pe, dr_se;
 
 // Dữ liệu điều khiển PID của cơ cấu lái
-volatile Q3_12 sys_st_ref, st_pe, st_se;
+volatile Q3_12_t sys_st_ref, st_pe, st_se;
 
 // Dữ liệu tự định vị của xe
 volatile sys_pose_t sys_pose;
-volatile frame_t frame;
 
 // Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
 volatile uint16_t sys_sample_cnt;
@@ -31,7 +30,7 @@ volatile int16_t encoder_pos_dot;
 volatile int16_t encoder_position;
 
 // Độ dài ước tính di chuyển được mỗi chu kỳ ngắt
-volatile Q3_28 meters_per_dt;
+volatile Q3_28_t meters_per_dt;
 // Các chương trình con --------------------------------------------------------
 /**
  * Khởi động hệ thống, thiết lập chương trình
@@ -134,7 +133,7 @@ void sys_halt()
  * Lấy dữ liệu về tốc độ hiện tại.
  * Đơn vị ngõ ra: m/s.
  */
-Q17_14 sys_get_spd()
+Q17_14_t sys_get_spd()
 {
   return Q3_28_TO_Q17_14(meters_per_dt)*UPDATE_RATE;
 }
@@ -177,10 +176,10 @@ ISR(TIMER2_COMPA_vect)
   // Cập nhật vị trí tuyệt đối encoder
   encoder_position += encoder_pos_dot;
 
-  int32_t duty_cycle;
+  Q23_8_t duty_cycle;
   uint8_t direction_bit;
   int16_t dr_e, dr_de;
-  Q3_12 st_e, st_de;
+  Q3_12_t st_e, st_de;
   // II) Chạy bộ điều khiển PID bánh dẫn động:
   // u = kp.e + ki.∫edt + kd.de/dt
   // Trường hợp lấy mẫu rời rạc:
@@ -199,9 +198,9 @@ ISR(TIMER2_COMPA_vect)
   // TODO: thêm hệ số tắt dần vào công thức
 
   // Tính giá trị ngõ ra:
-  duty_cycle = ((int32_t)(settings.dr_kp)*dr_e +
-                (int32_t)(settings.dr_ki)*dr_se +
-                (int32_t)(settings.dr_kd)*dr_de);
+  duty_cycle = ((Q23_8_t)(settings.dr_kp)*dr_e +
+                (Q23_8_t)(settings.dr_ki)*dr_se +
+                (Q23_8_t)(settings.dr_kd)*dr_de);
 
   // e của chu kỳ này là pe của chu kỳ kế tiếp
   dr_pe = dr_e;
@@ -225,7 +224,7 @@ ISR(TIMER2_COMPA_vect)
   imu_update();
 
   // V) Chạy bộ điều khiển PID góc lái
-  st_e = Q7_24_TO_Q3_12(sys_pose.a) - sys_st_ref;   // Tính sai số
+  st_e = Q3_28_TO_Q3_12(sys_pose.a) - sys_st_ref;   // Tính sai số
   while (st_e > Q3_12PI)
     st_e -= Q3_12TWO_PI;     // Đảm bảo e < pi
   while (st_e < -Q3_12PI)
@@ -236,12 +235,16 @@ ISR(TIMER2_COMPA_vect)
   else st_se += st_e;               // Tính Σe
 
   // Tính giá trị ngõ ra:
-  duty_cycle = ((int32_t)(settings.st_kp)*st_e +
-                (int32_t)(settings.st_ki)*st_se +
-                (int32_t)(settings.st_kd)*st_de) >> 12;
+  duty_cycle = ((Q23_8_t)(settings.st_kp)*st_e +
+                (Q23_8_t)(settings.st_ki)*st_se +
+                (Q23_8_t)(settings.st_kd)*st_de) >> 12;
 
   // e của chu kỳ này là pe của chu kỳ kế tiếp
   st_pe = st_e;
+
+  // Giá trị điều khiển phụ thuộc vào giá trị
+  // vận tốc bánh dẫn động
+  duty_cycle *= encoder_pos_dot;
 
   // VI) Điều khiển động cơ lái
   if (duty_cycle < 0) {                      // Kiểm tra dấu của ngõ ra
@@ -265,10 +268,8 @@ ISR(TIMER2_COMPA_vect)
   // phép nhân giữa quãng đường đi
   // với sin hoặc cos góc hướng đầu
   // xe (kiểu Q3_28).
-  sys_pose.x += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.pv[0]))>>1;
-  sys_pose.y += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.pv[1]))>>1;
-  sys_pose.x += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.v[0]))>>1;
-  sys_pose.y += Q3_28_TO_Q7_24(Q3_28MUL(meters_per_dt, sys_pose.v[1]))>>1;
+  sys_pose.x += Q3_28_MUL_AS_Q25_38(meters_per_dt, sys_pose.pv[0] + sys_pose.v[0])>>1;
+  sys_pose.y += Q3_28_MUL_AS_Q25_38(meters_per_dt, sys_pose.pv[1] + sys_pose.v[1])>>1;
 
   // Cập nhật pv
   sys_pose.pv[0] = sys_pose.v[0];
@@ -292,7 +293,6 @@ ISR(TIMER2_COMPA_vect)
     encoder_position -= settings.encoder_ppr;
     sys_dr_ref -= settings.encoder_ppr;
   }
-  // TODO: thêm cập nhật hệ quy chiếu
 
   if (protocol_flags & PROTOCOL_FLAG_SAMPLE_RATE) {
     sys_sample_cnt++;

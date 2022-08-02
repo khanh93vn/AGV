@@ -6,7 +6,7 @@
 #include "agv.h"
 
 // Bảng góc từ 0 đến pi/2, kiểu Q3_28
-static const Q3_28 angle_table[] = {
+static const Q3_28_t angle_table[] = {
            0L,   6692975L,  13385950L,  20078925L,  26771900L,  33464875L,
     40157850L,  46850825L,  53543800L,  60236775L,  66929751L,  73622726L,
     80315701L,  87008676L,  93701651L, 100394626L, 107087601L, 113780576L,
@@ -21,7 +21,7 @@ static const Q3_28 angle_table[] = {
 };
 
 // Bảng cosin của các góc tương ứng với bảng trên
-static const Q3_28 cosine_table[] = {
+static const Q3_28_t cosine_table[] = {
    268435456L, 268352021L, 268101770L, 267684856L, 267101540L, 266352184L,
    265437254L, 264357318L, 263113049L, 261705219L, 260134703L, 258402479L,
    256509622L, 254457309L, 252246817L, 249879519L, 247356887L, 244680489L,
@@ -40,10 +40,10 @@ static const Q3_28 cosine_table[] = {
  * Dùng phương pháp tra bảng để tiết
  * kiệm thời gian.
  */
-Q3_28 Q3_28acos_lookup(Q3_28 c)
+Q3_28_t Q3_28acos_lookup(Q3_28_t c)
 {
   uint8_t i, j, k, s = 0;
-  Q3_28 angle;
+  Q3_28_t angle;
   uint64_t interpolated;
 
   // Đảm bảo c nằm trong đoạn [0, 1]
@@ -67,13 +67,13 @@ Q3_28 Q3_28acos_lookup(Q3_28 c)
   return angle;
 }
 
-/** 
+/**
  * Hàm tìm arctan xấp xỉ bằng đa thức
- * bậc 7 
+ * bậc 7
  */
-Q3_28 Q3_28atan2(Q3_28 y, Q3_28 x)
+Q3_28_t Q3_28atan2(Q3_28_t y, Q3_28_t x)
 {
-  Q3_28 a;
+  Q3_28_t a;
   if(x > 0) {
     if(y >= 0) { // đảm bảo |y+x| >= |y-x| => |a| <= 1
       a = Q3_28DIV((y>>1) - (x>>1), y + x);
@@ -100,14 +100,14 @@ Q3_28 Q3_28atan2(Q3_28 y, Q3_28 x)
 /**
  * Tính atan trong góc phần tư thứ nhất.
  */
-Q3_28 Q3_28atan(Q3_28 a)
+Q3_28_t Q3_28atan(Q3_28_t a)
 {
-  static const Q3_28 a0 = 210828714,
-                     a1 = 536447127,
-                     a3 = -689594581,
-                     a5 = 1253983892,
-                     a7 = -1328963016;
-  Q3_28 at, k, a_sqr;
+  static const Q3_28_t a0 = 210828714,
+                       a1 = 536447127,
+                       a3 = -689594581,
+                       a5 = 1253983892,
+                       a7 = -1328963016;
+  Q3_28_t at, k, a_sqr;
   a_sqr = Q3_28MUL(a, a);
   at = a0; k = a;
   at += Q3_28MUL(a1, k);

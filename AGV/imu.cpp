@@ -76,24 +76,30 @@ void imu_init()
  */
 uint8_t imu_update()
 {
-  Q1_14 q[4];       // Biến giữ giá trị quarternion
+  Q1_14_t q[4];       // Biến giữ giá trị quarternion
   if (!dmp_ready || !mpu.dmpGetCurrentFIFOPacket(fifo_buffer))
     return 1;
 
   // Dữ liệu quarternion (integer 16 bit) được chứa trong các
   // byte (0, 1), (4, 5), (8, 9), (12, 13)
-  q[0] = (Q1_14)fifo_buffer[0] << 8 | fifo_buffer[1];
-  q[1] = (Q1_14)fifo_buffer[4] << 8 | fifo_buffer[5];
-  q[2] = (Q1_14)fifo_buffer[8] << 8 | fifo_buffer[9];
-  q[3] = (Q1_14)fifo_buffer[12] << 8 | fifo_buffer[13];
+  q[0] = (Q1_14_t)fifo_buffer[0] << 8 | fifo_buffer[1];
+  q[1] = (Q1_14_t)fifo_buffer[4] << 8 | fifo_buffer[5];
+  q[2] = (Q1_14_t)fifo_buffer[8] << 8 | fifo_buffer[9];
+  q[3] = (Q1_14_t)fifo_buffer[12] << 8 | fifo_buffer[13];
 
   // Tính hướng (góc xoay theo trục Z).
   // Công thức đối với quarternion kiểu float:
   //   angle = atan2(2.0*(z*w + x*y),
   //                 2.0*(w*w + x*x) - 1.0);
-  sys_pose.v[0] = ((Q3_28)q[3]*q[0] + (Q3_28)q[1]*q[2])<<1;
-  sys_pose.v[1] = ((((Q3_28)q[0]*q[0] + (Q3_28)q[1]*q[1])<<1) -
+  // 
+  // sys_pose.v[0] = ((Q3_28)q[3]*q[0] + (Q3_28)q[1]*q[2])<<1;
+  // sys_pose.v[1] = ((((Q3_28)q[0]*q[0] + (Q3_28)q[1]*q[1])<<1) -
+  //                    Q3_28ONE);
+  // Quay các vector 90 cùng chiều kim đồng hồ (-90 độ)
+  sys_pose.v[0] = ((((Q3_28_t)q[0]*q[0] + (Q3_28_t)q[1]*q[1])<<1) -
                      Q3_28ONE);
+  sys_pose.v[1] = -((Q3_28_t)q[3]*q[0] + (Q3_28_t)q[1]*q[2])<<1;
+  
 
   // Tìm góc từ vector chỉ hướng (Tính arctan)
   sys_pose.a = Q3_28atan2(sys_pose.v[1], sys_pose.v[0]);
@@ -106,9 +112,9 @@ uint8_t imu_update()
 //  dprint(q[2]); dprint(' ');
 //  dprintln(q[3]);
 //  dprint("Heading: ");
-//  dprint(sys_pose.v[0]/268435456.0); dprint(' ');
-//  dprintln(sys_pose.v[1]/268435456.0);
-//  //dprint("Angle: "); dprintln((sys_pose.a)/268435456.0*180.0/PI);
+//  dprint((double)sys_pose.v[0]/268435456.0d); dprint(' ');
+//  dprintln((double)sys_pose.v[1]/268435456.0d);
+//  dprint("Angle: "); dprintln((double)(sys_pose.a)/268435456.0d);
 
   return 0;
 }

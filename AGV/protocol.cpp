@@ -70,7 +70,7 @@ const void* RW_ADDRESSES[] = {
 // Các biến toàn cục ----------------------------------------------------------
 volatile uint8_t protocol_flags;
 volatile int16_t protocol_drive_ref_buff;
-volatile Q3_12 protocol_steer_ref_buff;
+volatile Q3_12_t protocol_steer_ref_buff;
 
 // Các chương trình con --------------------------------------------------------
 /**
@@ -78,7 +78,7 @@ volatile Q3_12 protocol_steer_ref_buff;
  */
 void protocol_init()
 {
-  
+
   // Cài đặt chân LED báo hiệu
   pinMode(IO_LED, OUTPUT);
 
@@ -157,7 +157,7 @@ void protocol_loop()
       data_ptr = (uint32_t*)(buffer+13);
       if (*data_ptr != PACKET_PAD) goto protocol_error;
       dprintln("Packet is ok!");
-      
+
       // Một số thông số cần đảm bảo xe dừng hẳn
       // trước khi thay đổi
       uint8_t agv_is_stopped = (sys_get_spd() == 0)?1:0;
@@ -223,7 +223,7 @@ protocol_error:
             protocol_flags |= PROTOCOL_FLAG_ERROR;
         }
       }
-      
+
       // Hậu xử lý một số biến
       switch(ctrl_code) {
       case SET_DRIVE_KI:        // ki bánh dẫn động
