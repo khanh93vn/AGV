@@ -66,3 +66,56 @@ Q3_28 Q3_28acos_lookup(Q3_28 c)
   if (s) angle = Q3_28PI - angle;
   return angle;
 }
+
+/** 
+ * Hàm tìm arctan xấp xỉ bằng đa thức
+ * bậc 7 
+ */
+Q3_28 Q3_28atan2(Q3_28 y, Q3_28 x)
+{
+  Q3_28 a;
+  if(x > 0) {
+    if(y >= 0) { // đảm bảo |y+x| >= |y-x| => |a| <= 1
+      a = Q3_28DIV((y>>1) - (x>>1), y + x);
+      return Q3_28atan(a);
+    } else { // đảm bảo |y-x| >= |y+x| => |a| <= 1
+      a = Q3_28DIV((y>>1) + (x>>1), y - x);
+      return -Q3_28atan(a);
+    }
+  }
+  if(x < 0) {
+    if(y >= 0){
+      a = Q3_28DIV((y>>1) + (x>>1), y - x);
+      return Q3_28HALF_PI - Q3_28atan(a);
+    }else{
+      a = Q3_28DIV( (y>>1) - (x>>1) , y + x );
+      return Q3_28atan(a) - Q3_28HALF_PI;
+    }
+  }
+  if(y > 0) return Q3_28HALF_PI;
+  if(y < 0) return -Q3_28HALF_PI;
+  return 0;
+}
+
+/**
+ * Tính atan trong góc phần tư thứ nhất.
+ */
+Q3_28 Q3_28atan(Q3_28 a)
+{
+  static const Q3_28 a0 = 210828714,
+                     a1 = 536447127,
+                     a3 = -689594581,
+                     a5 = 1253983892,
+                     a7 = -1328963016;
+  Q3_28 at, k, a_sqr;
+  a_sqr = Q3_28MUL(a, a);
+  at = a0; k = a;
+  at += Q3_28MUL(a1, k);
+  k = Q3_28MUL(k, a_sqr);
+  at += Q3_28MUL(a3, k);
+  k = Q3_28MUL(k, a_sqr);
+  at += Q3_28MUL(a5, k);
+  k = Q3_28MUL(k, a_sqr);
+  at += Q3_28MUL(a7, k);
+  return at;
+}

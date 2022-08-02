@@ -1,16 +1,8 @@
 Modules:
+  fixed_point_math
   cpu_map
   defaults
   settings
-  pid
-  drive
-  steer
+  imu
   protocol
   system
-Quy trình đọc I2C module MPU6050 kết hợp module HMC5883L (La bàn):
-  Xác định các chế độ làm việc (tần số lấy mẫu ...)
-  Thiết lập I2C, cấp nguồn cho các thiết bị
-  Gửi dữ liệu I2C cài đặt cho MPU6050
-  Bật chế độ Bypass cho MPU6050
-  Gửi dữ liệu cài đặt cho HMC5883L
-  Tắt chế độ Bypass cho MPU6050

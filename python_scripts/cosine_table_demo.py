@@ -36,10 +36,10 @@ def acos_lookup(c):
         angle = piQ3_28 - angle;
     return angle
 
-c2 = np.linspace(0.0, 1.0, 1000)
+c2 = np.linspace(-0.5, 0.5, 1000)
 c2Q3_28 = (c2*2**28).round().astype('int32')
-x2Q3_28 = (np.arccos(c2)*2**28).round().astype('int32')
-plt.plot(x2Q3_28 - np.vectorize(acos_lookup)(c2Q3_28))
+x2 = np.arccos(c2)
+plt.plot(c2, x2 - np.vectorize(acos_lookup)(c2Q3_28)/2**28)
 plt.xlabel("Giá trị cosin (Q3_28)")
 plt.ylabel("Sai số (radians)")
 plt.title("Biểu đồ  sai số  arccos tra bảng")

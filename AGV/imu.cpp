@@ -95,8 +95,8 @@ uint8_t imu_update()
   sys_pose.v[1] = ((((Q3_28)q[0]*q[0] + (Q3_28)q[1]*q[1])<<1) -
                      Q3_28ONE);
 
-  // Tìm góc từ vector chỉ hướng (Tính arcsin)
-  sys_pose.v[1];
+  // Tìm góc từ vector chỉ hướng (Tính arctan)
+  sys_pose.a = Q3_28atan2(sys_pose.v[1], sys_pose.v[0]);
 
   
   // Hiển thị để kiểm tra xem đọc đúng chưa
@@ -108,7 +108,7 @@ uint8_t imu_update()
 //  dprint("Heading: ");
 //  dprint(sys_pose.v[0]/268435456.0); dprint(' ');
 //  dprintln(sys_pose.v[1]/268435456.0);
-//  //dprint("Angle: "); dprintln(angle*180.0/PI);
+//  //dprint("Angle: "); dprintln((sys_pose.a)/268435456.0*180.0/PI);
 
   return 0;
 }

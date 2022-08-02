@@ -73,4 +73,10 @@ typedef int16_t Q3_12;
 // Tìm arccos của một giá trị kiểu Q3_28
 Q3_28 Q3_28acos_lookup(Q3_28 c);
 
+// Hàm tìm arctan xấp xỉ
+Q3_28 Q3_28atan2(Q3_28 y, Q3_28 x);
+
+//Tính atan trong góc phần tư thứ nhất.
+Q3_28 Q3_28atan(Q3_28 a);
+
 #endif

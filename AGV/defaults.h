@@ -43,6 +43,7 @@
 // Một số hằng số được sử dụng
 #define Q3_28ONE        268435456L            // Giá trị 1.0 lưu kiểu Q3_28
 #define Q3_28PI         843314857L            // Giá trị số pi lưu kiểu Q3_28
+#define Q3_28HALF_PI    421657428L            // Giá trị pi/2 lưu kiểu Q3_28
 #define Q3_12PI         12868                 // Giá trị số pi lưu kiểu Q3_12
 #define Q3_12TWO_PI     25736                 // Giá trị 2pi lưu kiểu Q3_12
 
