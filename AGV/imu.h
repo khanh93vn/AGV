@@ -11,6 +11,9 @@
 
 void imu_init();
 
-float imu_get_angle();
+uint8_t imu_update();
+
+// TODO: thêm calib MPU
+// TODO: thêm cảm biến la bàn
 
 #endif

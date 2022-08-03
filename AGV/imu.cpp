@@ -72,35 +72,48 @@ void imu_init()
 
 /**
  * Lấy góc xoay của xe (góc xoay quanh trục Z).
+ * Dữ liệu thể hiện dưới dạng vector.
  */
-float imu_get_angle()
+uint8_t imu_update()
 {
-  float angle = 0;    // Biến giữ giá trị góc xoay
-  int16_t q[4];       // Biến giữ giá trị quarternion
+  Q1_14_t q_w, q_x, q_y, q_z;     // Biến giữ giá trị quarternion
   if (!dmp_ready || !mpu.dmpGetCurrentFIFOPacket(fifo_buffer))
-    return angle;
+    return 1;
 
   // Dữ liệu quarternion (integer 16 bit) được chứa trong các
   // byte (0, 1), (4, 5), (8, 9), (12, 13)
-  q[0] = (int16_t)fifo_buffer[0] << 8 | fifo_buffer[1];
-  q[1] = (int16_t)fifo_buffer[4] << 8 | fifo_buffer[5];
-  q[2] = (int16_t)fifo_buffer[8] << 8 | fifo_buffer[9];
-  q[3] = (int16_t)fifo_buffer[12] << 8 | fifo_buffer[13];
+  q_w = (Q1_14_t)fifo_buffer[0] << 8 | fifo_buffer[1];
+  q_x = (Q1_14_t)fifo_buffer[4] << 8 | fifo_buffer[5];
+  q_y = (Q1_14_t)fifo_buffer[8] << 8 | fifo_buffer[9];
+  q_z = (Q1_14_t)fifo_buffer[12] << 8 | fifo_buffer[13];
 
   // Tính hướng (góc xoay theo trục Z).
   // Công thức đối với quarternion kiểu float:
-  //   angle = atan2(2.0*(q.z*q.w + q.x*q.y),
-  //                 2.0*(q.w*q.w + q.x*q.x) - 1.0);
-  angle = atan2(q[3]*q[0] + q[1]*q[2],
-                q[0]*q[0] + q[1]*q[1] - 134217728);
+  //   angle = atan2(2.0*(z*w + x*y),
+  //                 2.0*(w*w + x*x) - 1.0);
+  //
+  // sys_pose_curr->u = -((Q3_28_t)q_z*q_w + (Q3_28_t)q_x*q_y)<<1;
+  // sys_pose_curr->v = (((Q3_28_t)q_w*q_w + (Q3_28_t)q_x*q_x)<<1) - Q3_28(1);
+  // Quay các vector 90 cùng chiều kim đồng hồ (-90 độ)
+  sys_pose_curr->u = (((Q3_28_t)q_w*q_w + (Q3_28_t)q_x*q_x)<<1) - Q3_28(1);
+  sys_pose_curr->v = -((Q3_28_t)q_z*q_w + (Q3_28_t)q_x*q_y)<<1;
 
-  // Hiển thị
-  //dprint("Quarternion: ");
-  //dprint(q[0]); dprint(' ');
-  //dprint(q[1]); dprint(' ');
-  //dprint(q[2]); dprint(' ');
-  //dprintln(q[3]);
-  //dprint("Angle: "); dprintln(angle*180.0/PI);
-  
-  return angle;
+
+  // Tìm góc từ vector chỉ hướng (Tính arctan)
+  sys_pose_curr->a = Q3_28atan2(sys_pose_curr->v,
+                                sys_pose_curr->u);
+
+
+  // Hiển thị để kiểm tra xem đọc đúng chưa
+//  dprint("Quarternion: ");
+//  dprint(q[0]); dprint(' ');
+//  dprint(q[1]); dprint(' ');
+//  dprint(q[2]); dprint(' ');
+//  dprintln(q[3]);
+//  dprint("Heading: ");
+//  dprint((double)sys_pose.v[0]/268435456.0d); dprint(' ');
+//  dprintln((double)sys_pose.v[1]/268435456.0d);
+//  dprint("Angle: "); dprintln((double)(sys_pose.a)/268435456.0d);
+
+  return 0;
 }

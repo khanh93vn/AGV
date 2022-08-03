@@ -3,16 +3,9 @@
 
 #include "agv.h"
 
-// Cấu trúc lưu các con trỏ tới các thông số
-// cài đặt nằm ngoài module
-struct {
-  float *drive_pid_params;
-  float *steer_pid_params;
-} ext_settings;
-
 // Các biến toàn cục ----------------------------------------------------------
 // Dữ liệu cài đặt
-settings_t settings;
+volatile settings_t settings;
 
 // Các chương trình con --------------------------------------------------------
 /**
@@ -24,32 +17,53 @@ void settings_init()
 {
   // I) Chỉnh các con trỏ tới các vị trí lưu
   // thông số cài đặt ngoài module
-
-  // Thông số kp, ki, kd của module drive
-  ext_settings.drive_pid_params = &drive_pid.kp;
-
-  // Thông số kp, ki, kd của module steer
-  ext_settings.steer_pid_params = &steer_pid.kp;
+  // (Chưa có)
 
   // II) Gán giá trị mặc định cho các thông số cài đặt
-
-  // Đường kính bánh xe
-  settings.wheel_diameter = WHEEL_DIAMETER;
 
   // Số xung/vòng của encoder
   settings.encoder_ppr = ENCODER_PPR;
 
+  // Đường kính bánh xe
+  settings.wheel_perimeter = WHEEL_PERIMETER;
+
+  // Hệ số tắt dần giá trị sai số tích lũy
+  settings.se_decay = SE_DECAY;
+
   // Thông số PID bánh dẫn động
-  ext_settings.drive_pid_params[0] = DRIVE_KP;
-  ext_settings.drive_pid_params[1] = DRIVE_KI;
-  ext_settings.drive_pid_params[2] = DRIVE_KD;
-  ext_settings.drive_pid_params[3] = SE_DECAY;
+  settings.dr_kp_raw = DRIVE_KP;
+  settings.dr_ki_raw = DRIVE_KI;
+  settings.dr_kd_raw = DRIVE_KD;
 
   // Thông số PID hệ thống lái
-  ext_settings.steer_pid_params[0] = STEER_KP;
-  ext_settings.steer_pid_params[1] = STEER_KI;
-  ext_settings.steer_pid_params[2] = STEER_KD;
-  ext_settings.steer_pid_params[3] = SE_DECAY;
+  settings.st_kp_raw = STEER_KP;
+  settings.st_ki_raw = STEER_KI;
+  settings.st_kd_raw = STEER_KD;
 
   // TODO: thêm phần load cài đặt từ EEPROM
+
+  // Tính các thông số phụ thuộc
+  settings_update();
 }
+
+/** 
+ * Cập nhật các thông số phụ thuộc từ
+ * các thông số độc lập đã biết.
+ */
+void settings_update()
+{
+  // Hệ số chuyển đổi từ số xung sang số m đi được
+  settings.k_pc2m = settings.wheel_perimeter/settings.encoder_ppr;
+
+  // Thông số PID bánh dẫn động
+  settings.dr_kp = (Q7_8_t)(((int64_t)settings.dr_kp_raw*settings.k_pc2m)>>28);
+  settings.dr_ki = (Q7_8_t)(((int64_t)settings.dr_ki_raw*settings.k_pc2m/UPDATE_RATE)>>28); // ki <- ki*dt
+  settings.dr_kd = (Q7_8_t)(((int64_t)settings.dr_kd_raw*settings.k_pc2m*UPDATE_RATE)>>28); // kd <- kd/dt
+
+  // Thông số PID hệ thống lái
+  settings.st_kp = settings.st_kp_raw;
+  settings.st_ki = settings.st_ki_raw/UPDATE_RATE;
+  settings.st_kd = settings.st_kd_raw*UPDATE_RATE;
+}
+
+// TODO: thêm chương trình con set perimeter từ diameter

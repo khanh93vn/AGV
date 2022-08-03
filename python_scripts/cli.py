@@ -33,19 +33,35 @@ if len(sys.argv) > 1:
 else:
     device = '/dev/ttyACM0'
 
-com = Serial(device, baudrate=115200, timeout=0.1)
+# com = Serial(device, baudrate=115200, timeout=10.0)
+com = Serial(device, baudrate=9600, timeout=10.0)
 
-_thread.start_new_thread(uart_receive, (com,))
+# com.timeout = 0.1
+# _thread.start_new_thread(uart_receive, (com,))
+# ready = True
 
-try:
-    while True:
-        line = input("")
-        cmd, *args = line.split()
-        if cmd.lower() == "exit":
-            break
-        else:
-            execute_command(com, cmd.lower(), args)
-except KeyboardInterrupt:
-    pass
-
-com.close()
+import readline
+print("Đang kết nối...")
+ready_str = com.read_until('\r')
+ready = b'AGV ready!' in ready_str
+if ready:
+    print("Kết nối đã sẵn sàng")
+    com.timeout = 1.0
+    try:
+        while True:
+            line = input(">>> ")
+            cmd, *args = line.split()
+            if cmd.lower() == "exit":
+                break
+            else:
+                execute_command(com, cmd.lower(), args)
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        raise e
+    com.close()
+else:
+    if len(ready_str) > 0:
+        print("Không nhận dạng được hồi đáp:", ready_str)
+    else:
+        print("Không hồi đáp")

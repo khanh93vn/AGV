@@ -4,9 +4,9 @@
 #include "agv.h"
 
 #if DEBUG
-  volatile long debugval01, debugval02;
-  volatile long *debugval_ptr = &debugval01;
+  volatile unsigned long debugval01, debugval02;
 #endif
+volatile unsigned char *debug_ptr;
 
 int main()
 {
@@ -14,7 +14,6 @@ int main()
 //  MCUSR = 0;
 //  wdt_disable();
   init();
-
   // I) Cài đặt ban đầu
 
   // Khởi tạo thông số cài đặt
@@ -30,12 +29,6 @@ int main()
   // II) Vòng lặp chính
   while (1)
   {
-    // Khởi động các bộ điều khiển
-    drive_init();
-    dprintln("Hoàn tất khởi động module drive");
-    steer_init();
-    dprintln("Hoàn tất khởi động module steer");
-
     // Khởi động các hệ thống ngắt
     sys_init();
     dprintln("Hoàn tất khởi động hệ thống");

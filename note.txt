@@ -1,16 +1,20 @@
 Modules:
+  fixed_point_math
   cpu_map
   defaults
   settings
-  pid
-  drive
-  steer
+  imu
   protocol
   system
-Quy trình đọc I2C module MPU6050 kết hợp module HMC5883L (La bàn):
-  Xác định các chế độ làm việc (tần số lấy mẫu ...)
-  Thiết lập I2C, cấp nguồn cho các thiết bị
-  Gửi dữ liệu I2C cài đặt cho MPU6050
-  Bật chế độ Bypass cho MPU6050
-  Gửi dữ liệu cài đặt cho HMC5883L
-  Tắt chế độ Bypass cho MPU6050
+TODO:
+  Đổi Arduino pin thành IO port ATmega328P (?)
+  thêm calib MPU
+  Thêm cách báo hiệu lỗi đường truyền MPU6050
+  Thêm phần xử  lý lỗi đường truyền MPU6050
+  Thêm code gửi dữ liệu tự định vị
+  Thêm code thoát vòng lặp báo hiệu lỗi
+  Thêm code lưu/tải dữ liệu từ EEPROM
+  Thêm code set chu vi bằng đường kính
+  Thêm hệ số tắt dần vào công thức tính tích phân PID
+  Viết lại module imu và uart thành code C, chuyển toàn bộ project thành C
+  Tách cpu_map và các phần có cài đặt thanh ghi ra

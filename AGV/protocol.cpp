@@ -3,29 +3,75 @@
 
 #include "agv.h"
 
-// Các mã lệnh điều khiển
-#define PROTOCOL_STOP             0x01  // Dừng
-#define PROTOCOL_UPDATE_REF       0x02  // Cập nhật tham chiếu
-#define PROTOCOL_SET_DRIVE_REF    0x03  // Set tham chiếu dẫn động (tốc độ tiến-lùi)
-#define PROTOCOL_SET_DRIVE_KP     0x04  // Set Kp dẫn động
-#define PROTOCOL_SET_DRIVE_KI     0x05  // Set Ki dẫn động
-#define PROTOCOL_SET_DRIVE_KD     0x06  // Set Kd dẫn động
-#define PROTOCOL_SET_STEER_REF    0x07  // Set tham chiếu góc lái
-#define PROTOCOL_SET_STEER_KP     0x08  // Set Kp lái
-#define PROTOCOL_SET_STEER_KI     0x09  // Set Ki lái
-#define PROTOCOL_SET_STEER_KD     0x0A  // Set Kd lái
-#define PROTOCOL_SET_WHEEL_D      0x0B  // Cập nhật đường kính bánh xe
-#define PROTOCOL_SET_ENCODER_PPR  0x0C  // Cập nhật số xung/vòng của encoder
-#define PROTOCOL_GET_SAMPLE_RATE  0x0D  // Test tần số lấy mẫu
-#define PROTOCOL_SET_DRIVE_DECAY  0x0E  // Set hệ số tắt dần pid dẫn động
-#define PROTOCOL_SET_STEER_DECAY  0x0F  // Set hệ số tắt dần pid lái
+#define READ_WRITE_MSK        0x80  // mask đọc/ghi
 
-#define PROTOCOL_PAD              0xFFFFFFFF
+// Các mã lệnh set giá trị biến
+#define SET_DRIVE_REF         0x01  // tham chiếu bánh dẫn động
+#define SET_STEER_REF         0x02  // tham chiếu góc lái
+#define SET_DRIVE_KP          0x03  // kp bánh dẫn động
+#define SET_DRIVE_KI          0x04  // ki bánh dẫn động
+#define SET_DRIVE_KD          0x05  // kd bánh dẫn động
+#define SET_STEER_KP          0x06  // kp góc lái
+#define SET_STEER_KI          0x07  // ki góc lái
+#define SET_STEER_KD          0x08  // kd góc lái
+#define SET_ENCODER_PPR       0x09  // số xung/vòng của encoder
+#define SET_DECAY             0x0A  // hệ số tắt dần (PID)
+#define SET_WHEEL_PERIMETER   0x0B  // chu vi vòng lăn bánh dẫn động
+
+// Các mã lệnh yêu cầu gửi giá trị biến
+#define SEND_DRIVE_REF        0x81  // tham chiếu bánh dẫn động
+#define SEND_STEER_REF        0x82  // tham chiếu góc lái
+#define SEND_DRIVE_KP         0x83  // kp bánh dẫn động
+#define SEND_DRIVE_KI         0x84  // ki bánh dẫn động
+#define SEND_DRIVE_KD         0x85  // kd bánh dẫn động
+#define SEND_STEER_KP         0x86  // kp góc lái
+#define SEND_STEER_KI         0x87  // ki góc lái
+#define SEND_STEER_KD         0x88  // kd góc lái
+#define SEND_ENCODER_PPR      0x89  // số xung/vòng của encoder
+#define SEND_DECAY            0x8A  // hệ số tắt dần (PID)
+#define SEND_WHEEL_PERIMETER  0x8B  // chu vi vòng lăn bánh dẫn động
+
+// Các mã lệnh yêu cầu đặc biệt
+#define SEND_POSE             0xFF  // gửi dữ liệu tự định vị
+#define SEND_SAMPLING_RATE    0xFE  // Test và gửi tần số lấy mẫu
+#define SEND_DEBUG_VAL        0xFD  // Gửi giá trị debug
+#define UPDATE_REF            0x7F  // cập nhật tham chiếu
+#define UPDATE_SETTINGS       0x7E  // cập nhật cài đặt
+#define SET_WHEEL_DIAMETER    0x7D  // đường kính bánh xe
+
+#define PACKET_PAD            0xFFFFFFFF
+
+// Điểm bắt đầu các mã lệnh đọc
+#define READ_CODE_BEGIN       SET_DRIVE_REF
+
+// Điểm ranh giới giữa các lệnh ghi biến
+// 16bit và các lệnh ghi biến 32bit
+#define READ_32_BIT_BEGIN     SET_WHEEL_PERIMETER
+
+// Điểm kết thúc các mã lệnh đọc
+#define READ_CODE_END         SEND_WHEEL_PERIMETER+1
+
+// Bảng địa chỉ của các biến cần đọc ghi
+// như đã liệt kê ở trên (trừ các lệnh yêu
+// cầu đặc biệt)
+const void* RW_ADDRESSES[] = {
+  (void*)&protocol_drive_ref_buff,
+  (void*)&protocol_steer_ref_buff,
+  (void*)&settings.dr_kp_raw,
+  (void*)&settings.dr_ki_raw,
+  (void*)&settings.dr_kd_raw,
+  (void*)&settings.st_kp_raw,
+  (void*)&settings.st_ki_raw,
+  (void*)&settings.st_kd_raw,
+  (void*)&settings.encoder_ppr,
+  (void*)&settings.se_decay,
+  (void*)&settings.wheel_perimeter,
+};
 
 // Các biến toàn cục ----------------------------------------------------------
 volatile uint8_t protocol_flags;
-volatile float protocol_drive_ref_buff;
-volatile float protocol_steer_ref_buff;
+volatile int16_t protocol_drive_ref_buff;
+volatile Q3_12_t protocol_steer_ref_buff;
 
 // Các chương trình con --------------------------------------------------------
 /**
@@ -33,11 +79,18 @@ volatile float protocol_steer_ref_buff;
  */
 void protocol_init()
 {
+
   // Cài đặt chân LED báo hiệu
   pinMode(IO_LED, OUTPUT);
 
   // Bắt đầu truyền thông
+
+#if BLUETOOTH
+  // Tần số mặc định của HC-06
+  Serial.begin(9600);
+#else
   Serial.begin(BAUDRATE);
+#endif
 }
 
 /**
@@ -62,21 +115,16 @@ void protocol_loop()
   // Bắt đầu nhận tín hiệu truyền thông
   dprintln("Bắt đầu nhận truyền thông");
   protocol_flags |= PROTOCOL_FLAG_RECEIVING;
+  Serial.write("AGV ready!\r");
   while (protocol_flags & PROTOCOL_FLAG_RECEIVING)
   {
-    /*
-    float spd = sys_get_spd();
-    if (spd != 0) {
-      dprint(sys_get_heading());
-      dprint(' ');
-      dprintln(sys_get_wheel_angle());
-    }*/
     if (Serial.available() >= 17) {
       // I) Khai báo biến
       uint8_t buffer[18];   // Vùng nhớ chứa chuỗi truyền
       uint8_t ctrl_code;    // Mã lệnh
-      float *ctrl_val_ptr;  // Con trỏ giá trị truyền
-      uint32_t *comp_ptr;   // Con trỏ chỉ vào các vùng soát lỗi
+      uint32_t *data_ptr;   // Con trỏ 32bit
+      uint32_t data;        // Vùng nhớ đệm để gửi hoặc nhận dữ liệu
+      uint8_t addr_code;    // Giá trị chỉ biến cần đọc/ghi
 
       // Đọc chuỗi truyền.
       // Khung truyền thông theo bảng bên dưới (17 bit):
@@ -103,12 +151,13 @@ void protocol_loop()
       for (int i = 0; i < 17; i++) buffer[i] = Serial.read();
 
       // Kiểm tra 12 bit đệm
-      comp_ptr = (uint32_t*)(buffer);
-      if (*comp_ptr != PROTOCOL_PAD) goto protocol_error;
-      comp_ptr = (uint32_t*)(buffer+5);
-      if (*comp_ptr != PROTOCOL_PAD) goto protocol_error;
-      comp_ptr = (uint32_t*)(buffer+13);
-      if (*comp_ptr != PROTOCOL_PAD) goto protocol_error;
+      data_ptr = (uint32_t*)(buffer);
+      if (*data_ptr != PACKET_PAD) goto protocol_error;
+      data_ptr = (uint32_t*)(buffer+5);
+      if (*data_ptr != PACKET_PAD) goto protocol_error;
+      data_ptr = (uint32_t*)(buffer+13);
+      if (*data_ptr != PACKET_PAD) goto protocol_error;
+      dprintln("Packet is ok!");
 
       // Một số thông số cần đảm bảo xe dừng hẳn
       // trước khi thay đổi
@@ -116,104 +165,151 @@ void protocol_loop()
 
       // Giải mã tín hiệu
       ctrl_code = buffer[4];
-      ctrl_val_ptr = (float*)(buffer + 9);
-      switch(ctrl_code)
+      switch(ctrl_code)         // Kiểm tra các mã lệnh đặc biệt
       {
-      case PROTOCOL_STOP:           // Dừng
-        protocol_stop();
-        dprintln("Đã dừng");
-        // Thực hiện tiếp tục lệnh bên dưới
-      case PROTOCOL_UPDATE_REF:     // Cập nhật tham chiếu
-        protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
-        dprintln("Đã cập nhật tham chiếu");
+      case SEND_POSE:           // gửi dữ liệu tự định vị
+        // Vấn đề: Lỗi dữ liệu
+        // không đồng bô khi ngắt
+        // xảy ra trong lúc đang copy
+        // và gửi:
+        //  ________________________
+        // |                        |
+        // | Copy và gửi dữ liệu x |
+        // |   ở thời điểm t      |
+        // |________________________|------> Ngắt cập nhật hệ thống
+        // |                        |<------ Trở về từ ngắt
+        // | Copy và gửi dữ liệu y |
+        // |   ở thời điểm t+1    |
+        // |________________________|
+        // |                        |
+        // | Copy và gửi dữ liệu a |
+        // |   ở thời điểm t+1    |
+        // |________________________|
+        // Giải pháp là cho hai vùng nhớ
+        // lưu sys_pose luân phiên nhau
+        // cập nhật. Khi cần lấy dữ liệu,
+        // copy giá trị con trỏ trước
+        // có thể tránh trường hợp lỗi
+        // như trên:
+        // (Có hai vùng nhớ lưu sys_pose
+        // luân phiên nhau cập nhật dữ liệu
+        // mới nên vẫn giữ được dữ liệu
+        // thời điểm t).
+        //  ________________________
+        // |                        |
+        // | Copy con trỏ dữ liệu  |
+        // |   ở thời điểm t      |
+        // |________________________|
+        // |                        |
+        // | Copy và gửi dữ liệu x |
+        // |   ở thời điểm t      |
+        // |________________________|------> Ngắt cập nhật hệ thống
+        // |                        |<------ Trở về từ ngắt
+        // | Copy và gửi dữ liệu y |
+        // |   ở thời điểm t      |
+        // |________________________|
+        // |                        |
+        // | Copy và gửi dữ liệu a |
+        // |   ở thời điểm t      |
+        // |________________________|
+        // ------------------------------
+        // Mượn con trỏ data_ptr để trỏ
+        // vào vùng cấu trúc sys_pose
+        // hiện tại
+        data_ptr = (uint32_t*)sys_pose_curr;
+
+        // Copy, và gửi dữ liệu x, y, z
+        // thông qua con trỏ vào sys_pose.
+        // Cẩn thận cấu trúc sys_pose
+        // có thể bị thay đổi trong quá
+        // trình phát triển . Cấu trúc
+        // được sử dụng trong code này:
+  //   data_ptr
+  //  ____V________________________________________________________________
+  // |         |         |         |         |         |         |         |
+  // |  32-bit |  32-bit |  32-bit |  32-bit |  32-bit |  32-bit |  32-bit |
+  // |_________|_________|_________|_________|_________|_________|_________|
+  // |                                                                     |
+  // |                               sys_pose                              |
+  // |_____________________________________________________________________|
+  // |                   |                   |         |         |         |
+  // |         x         |         y         |    a    |    u    |    v    |
+  // |___________________|___________________|_________|_________|_________|
+        // (địa chỉ của struct cũng trùng
+        // với địa chỉ của phần tử thứ
+        // nhất)
+        // Gửi 20 bytes đầu tiên trong sys_pose:
+        // x : 8
+        // y : 8
+        // a : 4
+        SEND_NBYTES(data_ptr, 20);
         break;
-      case PROTOCOL_SET_DRIVE_REF:  // Đổi tham chiếu dẫn động
-        protocol_drive_ref_buff = *ctrl_val_ptr;
-        dprint("Tham chiếu dẫn động mới: ");
-        dprint(protocol_drive_ref_buff);
-        dprintln(" radians");
-        break;
-      case PROTOCOL_SET_DRIVE_KP:   // Đổi kp
-        if (agv_is_stopped) drive_pid.kp = *ctrl_val_ptr;
-        dprint("kp dẫn động mới: ");
-        dprintln(drive_pid.kp);
-        break;
-      case PROTOCOL_SET_DRIVE_KI:   // Đổi ki
-        if (agv_is_stopped) drive_pid.ki = *ctrl_val_ptr;
-        dprint("ki dẫn động mới: ");
-        dprintln(drive_pid.ki);
-        break;
-      case PROTOCOL_SET_DRIVE_KD:   // Đổi kd
-        if (agv_is_stopped) drive_pid.kd = *ctrl_val_ptr;
-        dprint("kd dẫn động mới: ");
-        dprintln(drive_pid.kd);
-        break;
-      case PROTOCOL_SET_STEER_REF:  // Đổi tham chiếu lái
-        protocol_steer_ref_buff = *ctrl_val_ptr;
-        dprint("Tham chiếu lái mới: ");
-        dprint(protocol_steer_ref_buff);
-        dprintln(" radians");
-        break;
-      case PROTOCOL_SET_STEER_KP:   // Đổi kp lái
-        if (agv_is_stopped) steer_pid.kp = *ctrl_val_ptr;
-        dprint("kp lái mới: ");
-        dprintln(steer_pid.kp);
-        break;
-      case PROTOCOL_SET_STEER_KI:   // Đổi ki lái
-        if (agv_is_stopped) steer_pid.ki = *ctrl_val_ptr;
-        dprint("ki lái mới: ");
-        dprintln(steer_pid.ki);
-        break;
-      case PROTOCOL_SET_STEER_KD:   // Đổi kd lái
-        if (agv_is_stopped) steer_pid.kd = *ctrl_val_ptr;
-        dprint("kd lái mới: ");
-        dprintln(steer_pid.kd);
-        break;
-      case PROTOCOL_SET_WHEEL_D:    // cập nhật đường kính bánh dẫn động
-        if (agv_is_stopped) settings.wheel_diameter = *ctrl_val_ptr;
-        dprint("Đường kính bánh xe đã cập nhật: ");
-        dprint(settings.wheel_diameter);
-        dprintln(" m");
-        break;
-      case PROTOCOL_SET_ENCODER_PPR:  // cập nhật số cài đặt xung/vòng của encoder
-        if (agv_is_stopped) settings.encoder_ppr = *ctrl_val_ptr;
-        dprint("Số xung/vòng encoder đã cập nhật: ");
-        dprint(settings.encoder_ppr);
-        dprintln(" m");
-        break;
-      case PROTOCOL_GET_SAMPLE_RATE:  // test tần số lấy mẫu
+      case SEND_SAMPLING_RATE:  // Test và gửi tần số lấy mẫu
         if (agv_is_stopped) {
           protocol_flags &= ~PROTOCOL_FLAG_RECEIVING;
-
           // bắt đầu test
           sys_sample_cnt = 0;
           protocol_flags |= PROTOCOL_FLAG_SAMPLE_RATE;
           delay(1000);
-          dprint("Số lần lấy mẫu trong 1s: "); dprintln(sys_sample_cnt);
+          data = (uint32_t)sys_sample_cnt;
+          dprint("Tần số lấy mẫu: "); dprintln(data);
+          SEND_4BYTES_INT(&data);
           protocol_flags &= ~PROTOCOL_FLAG_SAMPLE_RATE;
+
           protocol_flags |= PROTOCOL_FLAG_RECEIVING;
         }
         break;
-      case PROTOCOL_SET_DRIVE_DECAY:  // set hệ số tắt dần
-        drive_pid.se_decay = *ctrl_val_ptr;
+      case SEND_DEBUG_VAL:
+        SEND_4BYTES_INT(debug_ptr);
         break;
-      case PROTOCOL_SET_STEER_DECAY:  // set hệ số tắt dần
-        steer_pid.se_decay = *ctrl_val_ptr;
+      case UPDATE_REF:  // cập nhật tham chiếu
+        protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
+        dprintln("Đã cập nhật tham chiếu");
         break;
-      default:  // có lỗi xảy ra, thoát
+      case UPDATE_SETTINGS: // Cập nhật các thông số phụ thuộc
+        settings_update();
+        break;
+      default:  // Kiểm tra các mã lệnh gửi nhận thường
+        addr_code = ctrl_code & ~READ_WRITE_MSK;    // lấy 7 bit đầu
+        if (addr_code < READ_CODE_END) {
+          data_ptr = RW_ADDRESSES[addr_code-READ_CODE_BEGIN];
+          if (ctrl_code & READ_WRITE_MSK) {       // lấy bit cuối
+            if (addr_code < READ_32_BIT_BEGIN)    // nếu là 1 thì gửi
+              SEND_2BYTES_INT(data_ptr);
+            else SEND_4BYTES_INT(data_ptr);
+            dprint("Giá trị: "); dprintln(*data_ptr);
+          }
+          else {                                  // nếu là 0 thì nhận
+            data = *(uint32_t*)(buffer + 9);
+            // Tiền xử lý một số trường hợp
+            switch(addr_code) {
+            case SET_DRIVE_REF:       // tham chiếu bánh dẫn động
+              *(int16_t*)&data = (*(int32_t*)&data)/settings.k_pc2m;
+              break;
+            }
+            if (addr_code < READ_32_BIT_BEGIN)
+              *(uint16_t*)data_ptr = (uint16_t)data;
+            else *data_ptr = data;
+            dprint("Đã nhận được: "); dprintln(data);
+          }
+        }
+        else {
 protocol_error:
-        dprintln("Có lỗi xảy ra");
-        protocol_flags &= ~PROTOCOL_FLAG_RECEIVING;
-        protocol_flags |= PROTOCOL_FLAG_ERROR;
+            dprintln("Có lỗi xảy ra");
+            protocol_flags |= PROTOCOL_FLAG_ERROR;
+        }
+      }
+
+      // Hậu xử lý một số biến
+      switch(ctrl_code) {
       }
     }
+
+    if (protocol_flags & PROTOCOL_FLAG_ERROR)
+      protocol_flags &= ~PROTOCOL_FLAG_RECEIVING;
   }
 
-  // khi bị lỗi sẽ cho dừng xe
-  protocol_stop();
-  protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
-
-  // Cho dừng hệ thống
+  // khi bị lỗi sẽ cho dừng hệ thống
   sys_halt();
   dprintln("Đã cho dừng hệ thống");
 
@@ -228,15 +324,4 @@ protocol_error:
     delay(250);                       // Chu kỳ = 0.5s
     // TODO: thêm cách thoát khỏi vòng lặp lỗi
   }
-}
-
-/**
- * Cho dừng xe. Reset trị số tích phân trong các bộ PID.
- */
-void protocol_stop()
-{
-  protocol_drive_ref_buff = sys_get_wheel_angle();
-  protocol_steer_ref_buff = sys_get_heading();
-  drive_pid.se = 0;
-  steer_pid.se = 0;
 }
