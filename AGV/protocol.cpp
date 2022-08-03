@@ -3,7 +3,7 @@
 
 #include "agv.h"
 
-#define READ_WRITE_MSK      0x80  // mask đọc/ghi
+#define READ_WRITE_MSK        0x80  // mask đọc/ghi
 
 // Các mã lệnh set giá trị biến
 #define SET_DRIVE_REF         0x01  // tham chiếu bánh dẫn động

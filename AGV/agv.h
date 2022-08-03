@@ -1,5 +1,5 @@
 // File: agv.h
-// Tổng hợp các việnthư viện và module.
+// Tổng hợp các thư viện và module.
 
 #ifndef AGV_H
 #define AGV_H
