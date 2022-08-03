@@ -6,6 +6,13 @@
 #include "agv.h"
 
 // Các biến toàn cục của module ----------------------------------------------
+// Ghi chú
+// ref - reference point : tham chiếutrước
+// e   - error           : sai số. e = feedback - ref
+// pe  - previous error  : sai số ở lần lấy mẫu trước
+// de                    : sai phân của e. de = e - pe
+// se                    : tổng sai số từ nhiều lần lấy mẫu trước đó
+
 // Dữ liệu điều khiển PID của bánh dẫn động
 volatile uint16_t sys_dr_ref, dr_pe, dr_se;
 
@@ -13,7 +20,9 @@ volatile uint16_t sys_dr_ref, dr_pe, dr_se;
 volatile Q3_12_t sys_st_ref, st_pe, st_se;
 
 // Dữ liệu tự định vị của xe
-volatile sys_pose_t sys_pose;
+volatile sys_pose_t sys_pose[2];      // lưu 2 trạng thái:
+volatile sys_pose_t *sys_pose_curr,   // hiện tại
+                    *sys_pose_prev;   // và trước đó
 
 // Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
 volatile uint16_t sys_sample_cnt;
@@ -107,6 +116,10 @@ void sys_init()
   // Ví dụ bộ chia 1024 thì CS22:0 = 111
   TCCR2B &= ~(_BV(CS22) | _BV(CS21) | _BV(CS20)); // reset CS22:0 về 000
   TCCR2B |= CLK_SEL;
+
+  // Con trỏ dữ liệu tự định vị
+  sys_pose_curr = sys_pose;
+  sys_pose_prev = sys_pose+1;
 }
 
 /**
@@ -224,11 +237,11 @@ ISR(TIMER2_COMPA_vect)
   imu_update();
 
   // V) Chạy bộ điều khiển PID góc lái
-  st_e = Q3_28_TO_Q3_12(sys_pose.a) - sys_st_ref;   // Tính sai số
-  while (st_e > Q3_12PI)
-    st_e -= Q3_12TWO_PI;     // Đảm bảo e < pi
-  while (st_e < -Q3_12PI)
-    st_e += Q3_12TWO_PI;     // Đảm bảo e > -pi
+  st_e = Q3_28_TO_Q3_12(sys_pose_curr->a) - sys_st_ref;   // Tính sai số
+  while (st_e > Q3_12(PI))
+    st_e -= Q3_12(PI)<<1;     // Đảm bảo e < pi
+  while (st_e < -Q3_12(PI))
+    st_e += Q3_12(PI)<<1;    // Đảm bảo e > -pi
   st_de = st_e - st_pe;             // Tính de
   if ((st_e>=0 && st_pe<0) || (st_e<0 && st_pe>=0))
     st_se = 0;
@@ -268,12 +281,16 @@ ISR(TIMER2_COMPA_vect)
   // phép nhân giữa quãng đường đi
   // với sin hoặc cos góc hướng đầu
   // xe (kiểu Q3_28).
-  sys_pose.x += Q3_28_MUL_AS_Q25_38(meters_per_dt, sys_pose.pv[0] + sys_pose.v[0])>>1;
-  sys_pose.y += Q3_28_MUL_AS_Q25_38(meters_per_dt, sys_pose.pv[1] + sys_pose.v[1])>>1;
-
-  // Cập nhật pv
-  sys_pose.pv[0] = sys_pose.v[0];
-  sys_pose.pv[1] = sys_pose.v[1];
+  sys_pose_curr->x = sys_pose_prev->x + \
+    Q3_28_MUL_AS_Q25_38(meters_per_dt,
+                        (sys_pose_prev->u + sys_pose_curr->u)>>1);
+  sys_pose_curr->y = sys_pose_prev->y + \
+    Q3_28_MUL_AS_Q25_38(meters_per_dt,
+                        (sys_pose_prev->v + sys_pose_curr->v)>>1);
+  
+  sys_pose_t *tmp_pose_ptr = sys_pose_prev;
+  sys_pose_prev = sys_pose_curr;
+  sys_pose_curr = tmp_pose_ptr;
 
   // VIII) Cập nhật các điểm tham chiếu từ module protocol
   if (protocol_flags & PROTOCOL_FLAG_UPDATE_REF) {

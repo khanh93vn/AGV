@@ -14,7 +14,6 @@ int main()
 //  MCUSR = 0;
 //  wdt_disable();
   init();
-
   // I) Cài đặt ban đầu
 
   // Khởi tạo thông số cài đặt

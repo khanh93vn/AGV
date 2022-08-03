@@ -15,13 +15,17 @@ extern volatile Q3_12_t sys_st_ref;
 // Dữ liệu tự định vị của xe
 typedef struct {
   // x, y
-  Q7_24_t x, y;
+  Q25_38_t x, y;
 
-  // vector chỉ hướng đầu xe và
-  // góc tương ứng
-  Q3_28_t a, v[2], pv[2];   
+  // góc hướng đầu xe
+  Q3_28_t a;
+
+ // vector chỉ hướng đầu xe
+ Q3_28_t u, v;
 } sys_pose_t;
-extern volatile sys_pose_t sys_pose;
+extern volatile sys_pose_t sys_pose[2];      // lưu 2 trạng thái:
+extern volatile sys_pose_t *sys_pose_curr,   // hiện tại
+                           *sys_pose_prev;   // và trước đó
 
 // Biến đếm số lần lấy mẫu của hệ thống (số lần ngắt timer)
 extern volatile uint16_t sys_sample_cnt;

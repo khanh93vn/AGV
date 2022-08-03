@@ -33,7 +33,8 @@ if len(sys.argv) > 1:
 else:
     device = '/dev/ttyACM0'
 
-com = Serial(device, baudrate=115200, timeout=10.0)
+# com = Serial(device, baudrate=115200, timeout=10.0)
+com = Serial(device, baudrate=9600, timeout=10.0)
 
 # com.timeout = 0.1
 # _thread.start_new_thread(uart_receive, (com,))

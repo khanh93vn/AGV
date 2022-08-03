@@ -10,17 +10,16 @@
 #define ENCODER_PPR     600
 
 // Số đo mặc định vòng bánh xe dẫn động (m)
-#define WHEEL_PERIMETER 107374182   // P = Q3_28(0.4 m)
+#define WHEEL_PERIMETER Q3_28(0.412)
 
 // Thông số PID mặc định
-#define SE_DECAY        16367       // Hệ số tắt dần = Q1_14(0.999)
-#define DRIVE_KP        -20480      // kp = Q7_8(-80)
-#define DRIVE_KI        -20480      // ki = Q7_8(-80)
-#define DRIVE_KD        -1024       // kd = Q7_8(-4)
-//#define DRIVE_KD        0         // kd = Q7_8(0.0)
-#define STEER_KP        -1280       // kp = Q7_8(-5.0)
-#define STEER_KI        -26         // ki = Q7_8(-0.1)
-#define STEER_KD        -128        // kd = Q7_8(-0.5)
+#define SE_DECAY        Q1_14(0.999)
+#define DRIVE_KP        Q7_8(-80)
+#define DRIVE_KI        Q7_8(-80)
+#define DRIVE_KD        Q7_8(-4)
+#define STEER_KP        Q7_8(-5.0)
+#define STEER_KI        Q7_8(-0.1)
+#define STEER_KD        Q7_8(-0.5)
 
 // Các giá trị yêu cầu thận trọng khi thay đổi -------------------------------
 
@@ -41,10 +40,11 @@
 
 // Các hằng số
 // Một số hằng số được sử dụng
-#define Q3_28ONE        268435456L            // Giá trị 1.0 lưu kiểu Q3_28
-#define Q3_28PI         843314857L            // Giá trị số pi lưu kiểu Q3_28
-#define Q3_12PI         12868                 // Giá trị số pi lưu kiểu Q3_12
-#define Q3_12TWO_PI     25736                 // Giá trị 2pi lưu kiểu Q3_12
+#define PI              3.141592653589793238
+//#define Q3_28ONE        268435456L            // Giá trị 1.0 lưu kiểu Q3_28
+//#define Q3_28PI         843314857L            // Giá trị số pi lưu kiểu Q3_28
+//#define Q3_12PI         12868                 // Giá trị số pi lưu kiểu Q3_12
+//#define Q3_12TWO_PI     25736                 // Giá trị 2pi lưu kiểu Q3_12
 
 // Tần số truyền thông UART
 #define BAUDRATE        115200

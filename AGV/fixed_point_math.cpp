@@ -63,7 +63,7 @@ Q3_28_t Q3_28acos_lookup(Q3_28_t c)
   interpolated = (int64_t)(c - cosine_table[i])*(angle_table[j] - angle_table[i]);
   interpolated /= (cosine_table[j] - cosine_table[i]);
   angle += interpolated;
-  if (s) angle = Q3_28PI - angle;
+  if (s) angle = Q3_28(PI) - angle;
   return angle;
 }
 
@@ -86,14 +86,14 @@ Q3_28_t Q3_28atan2(Q3_28_t y, Q3_28_t x)
   if(x < 0) {
     if(y >= 0){
       a = Q3_28DIV((y>>1) + (x>>1), y - x);
-      return Q3_28PI - Q3_28atan(a);
+      return Q3_28(PI) - Q3_28atan(a);
     }else{
       a = Q3_28DIV( (y>>1) - (x>>1) , y + x );
-      return Q3_28atan(a) - Q3_28PI;
+      return Q3_28atan(a) - Q3_28(PI);
     }
   }
-  if(y > 0) return Q3_28PI>>1;
-  if(y < 0) return -(Q3_28PI>>1);
+  if(y > 0) return Q3_28(PI)>>1;
+  if(y < 0) return -(Q3_28(PI)>>1);
   return 0;
 }
 

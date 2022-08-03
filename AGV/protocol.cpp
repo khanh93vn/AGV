@@ -36,7 +36,8 @@
 #define SEND_SAMPLING_RATE    0xFE  // Test và gửi tần số lấy mẫu
 #define SEND_DEBUG_VAL        0xFD  // Gửi giá trị debug
 #define UPDATE_REF            0x7F  // cập nhật tham chiếu
-#define SET_WHEEL_DIAMETER    0x7E  // đường kính bánh xe
+#define UPDATE_SETTINGS       0x7E  // cập nhật cài đặt
+#define SET_WHEEL_DIAMETER    0x7D  // đường kính bánh xe
 
 #define PACKET_PAD            0xFFFFFFFF
 
@@ -167,9 +168,81 @@ void protocol_loop()
       switch(ctrl_code)         // Kiểm tra các mã lệnh đặc biệt
       {
       case SEND_POSE:           // gửi dữ liệu tự định vị
-        // TODO: thêm code gửi dữ liệu tự định vị
-        // Vấn đề: trong lúc đang copy dữ liệu, có thể bị ngắt,
-        // làm dữ liệu sai, không ăn khớp
+        // Vấn đề: Lỗi dữ liệu
+        // không đồng bô khi ngắt
+        // xảy ra trong lúc đang copy
+        // và gửi:
+        //  ________________________
+        // |                        |
+        // | Copy và gửi dữ liệu x |
+        // |   ở thời điểm t      |
+        // |________________________|------> Ngắt cập nhật hệ thống
+        // |                        |<------ Trở về từ ngắt
+        // | Copy và gửi dữ liệu y |
+        // |   ở thời điểm t+1    |
+        // |________________________|
+        // |                        |
+        // | Copy và gửi dữ liệu a |
+        // |   ở thời điểm t+1    |
+        // |________________________|
+        // Giải pháp là cho hai vùng nhớ
+        // lưu sys_pose luân phiên nhau
+        // cập nhật. Khi cần lấy dữ liệu,
+        // copy giá trị con trỏ trước
+        // có thể tránh trường hợp lỗi
+        // như trên:
+        // (Có hai vùng nhớ lưu sys_pose
+        // luân phiên nhau cập nhật dữ liệu
+        // mới nên vẫn giữ được dữ liệu
+        // thời điểm t).
+        //  ________________________
+        // |                        |
+        // | Copy con trỏ dữ liệu  |
+        // |   ở thời điểm t      |
+        // |________________________|
+        // |                        |
+        // | Copy và gửi dữ liệu x |
+        // |   ở thời điểm t      |
+        // |________________________|------> Ngắt cập nhật hệ thống
+        // |                        |<------ Trở về từ ngắt
+        // | Copy và gửi dữ liệu y |
+        // |   ở thời điểm t      |
+        // |________________________|
+        // |                        |
+        // | Copy và gửi dữ liệu a |
+        // |   ở thời điểm t      |
+        // |________________________|
+        // ------------------------------
+        // Mượn con trỏ data_ptr để trỏ
+        // vào vùng cấu trúc sys_pose
+        // hiện tại
+        data_ptr = (uint32_t*)sys_pose_curr;
+
+        // Copy, và gửi dữ liệu x, y, z
+        // thông qua con trỏ vào sys_pose.
+        // Cẩn thận cấu trúc sys_pose
+        // có thể bị thay đổi trong quá
+        // trình phát triển . Cấu trúc
+        // được sử dụng trong code này:
+  //   data_ptr
+  //  ____V________________________________________________________________
+  // |         |         |         |         |         |         |         |
+  // |  32-bit |  32-bit |  32-bit |  32-bit |  32-bit |  32-bit |  32-bit |
+  // |_________|_________|_________|_________|_________|_________|_________|
+  // |                                                                     |
+  // |                               sys_pose                              |
+  // |_____________________________________________________________________|
+  // |                   |                   |         |         |         |
+  // |         x         |         y         |    a    |    u    |    v    |
+  // |___________________|___________________|_________|_________|_________|
+        // (địa chỉ của struct cũng trùng
+        // với địa chỉ của phần tử thứ
+        // nhất)
+        // Gửi 20 bytes đầu tiên trong sys_pose:
+        // x : 8
+        // y : 8
+        // a : 4
+        SEND_NBYTES(data_ptr, 20);
         break;
       case SEND_SAMPLING_RATE:  // Test và gửi tần số lấy mẫu
         if (agv_is_stopped) {
@@ -192,6 +265,9 @@ void protocol_loop()
       case UPDATE_REF:  // cập nhật tham chiếu
         protocol_flags |= PROTOCOL_FLAG_UPDATE_REF;
         dprintln("Đã cập nhật tham chiếu");
+        break;
+      case UPDATE_SETTINGS: // Cập nhật các thông số phụ thuộc
+        settings_update();
         break;
       default:  // Kiểm tra các mã lệnh gửi nhận thường
         addr_code = ctrl_code & ~READ_WRITE_MSK;    // lấy 7 bit đầu
@@ -226,15 +302,6 @@ protocol_error:
 
       // Hậu xử lý một số biến
       switch(ctrl_code) {
-      case SET_DRIVE_KI:        // ki bánh dẫn động
-      case SET_STEER_KI:        // ki góc lái
-      case SET_DRIVE_KD:        // kd bánh dẫn động
-      case SET_STEER_KD:        // kd góc lái
-      case SET_WHEEL_DIAMETER:  // đổi đường kính bánh xe
-      case SET_ENCODER_PPR:     // số xung/vòng của encoder
-      case SET_WHEEL_PERIMETER: // chu vi vòng lăn bánh dẫn động
-        settings_update();      // Cập nhật các thông số phụ thuộc
-        break;
       }
     }
 

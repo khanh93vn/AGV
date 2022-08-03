@@ -15,7 +15,9 @@ Replace: $1$2= $3
 
 from time import sleep
 from struct import pack, unpack
-from math import pi
+from math import pi, degrees
+
+from fixed_point import *
 
 # Các mã lệnh set giá trị biến
 SET_DRIVE_REF         = 0x01  # tham chiếu bánh dẫn động
@@ -27,8 +29,8 @@ SET_STEER_KP          = 0x06  # kp góc lái
 SET_STEER_KI          = 0x07  # ki góc lái
 SET_STEER_KD          = 0x08  # kd góc lái
 SET_ENCODER_PPR       = 0x09  # số xung/vòng của encoder
-SET_WHEEL_PERIMETER   = 0x0A  # chu vi vòng lăn bánh dẫn động
-SET_DECAY             = 0x0B  # hệ số tắt dần (PID)
+SET_DECAY             = 0x0A  # hệ số tắt dần (PID)
+SET_WHEEL_PERIMETER   = 0x0B  # chu vi vòng lăn bánh dẫn động
 
 # Các mã lệnh yêu cầu gửi giá trị biến
 SEND_DRIVE_REF        = 0x81  # tham chiếu bánh dẫn động
@@ -40,15 +42,16 @@ SEND_STEER_KP         = 0x86  # kp góc lái
 SEND_STEER_KI         = 0x87  # ki góc lái
 SEND_STEER_KD         = 0x88  # kd góc lái
 SEND_ENCODER_PPR      = 0x89  # số xung/vòng của encoder
-SEND_WHEEL_PERIMETER  = 0x8A  # chu vi vòng lăn bánh dẫn động
-SEND_DECAY            = 0x8B  # hệ số tắt dần (PID)
+SEND_DECAY            = 0x8A  # hệ số tắt dần (PID)
+SEND_WHEEL_PERIMETER  = 0x8B  # chu vi vòng lăn bánh dẫn động
 
 # Các mã lệnh yêu cầu đặc biệt
 SEND_POSE             = 0xFF  # gửi dữ liệu tự định vị
 SEND_SAMPLING_RATE    = 0xFE  # Test và gửi tần số lấy mẫu
 SEND_DEBUG_VAL        = 0xFD  # Gửi giá trị debug
 UPDATE_REF            = 0x7F  # cập nhật tham chiếu
-SET_WHEEL_DIAMETER    = 0x7E  # đường kính bánh xe
+UPDATE_SETTINGS       = 0x7E  # cập nhật cài đặt
+SET_WHEEL_DIAMETER    = 0x7D  # đường kính bánh xe
 
 READ_WRITE_MSK        = 0x80
 
@@ -92,8 +95,8 @@ command_map = dict(
     sski=SET_STEER_KI,
     sskd=SET_STEER_KD,
     swp=SET_WHEEL_PERIMETER,
-    seppr=SET_ENCODER_PPR,
     sdc=SET_DECAY,
+    seppr=SET_ENCODER_PPR,
 
     gdrf=SEND_DRIVE_REF,
     gsrf=SEND_STEER_REF,
@@ -104,13 +107,14 @@ command_map = dict(
     gski=SEND_STEER_KI,
     gskd=SEND_STEER_KD,
     gwp=SEND_WHEEL_PERIMETER,
-    geppr=SEND_ENCODER_PPR,
     gdc=SEND_DECAY,
+    geppr=SEND_ENCODER_PPR,
 
     gp=SEND_POSE,
     gsr=SEND_SAMPLING_RATE,
     gdv=SEND_DEBUG_VAL,
     ur=UPDATE_REF,
+    us=UPDATE_SETTINGS,
     lin=lin,
     ang=ang,
     help=cmd_help,
@@ -134,9 +138,17 @@ def execute_command(com, cmd, args):
                     data = com.read(2)
                     print("Đã nhận được:", unpack('h', data)[0]);
                 else:
-                    data = com.read(4)
-                    print("Đã nhận được:", unpack('i', data)[0]);
-            except:
-                print("Lỗi!, nhận được:", data)
+                    if (cmd_code == SEND_POSE):
+                        data = com.read(20)
+                        x, y, a = unpack('lli', data)
+                        print(f"Định vị: x = {x/Q25_38(1.0)}, "
+                              f"y = {y/Q25_38(1.0)}, "
+                              f"a = {degrees(a/Q3_28(1.0))}")
+                    else:
+                        data = com.read(4)
+                        print("Đã nhận được:", unpack('i', data)[0]);
+            except Exception as e:
+                print(f"Lỗi!, nhận được: {data}")
+                raise e
     else:
         cmd_code(com, *args)
